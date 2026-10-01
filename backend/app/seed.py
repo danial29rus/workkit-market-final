@@ -1,7 +1,7 @@
 from decimal import Decimal
 from sqlalchemy import select
 from .db import SessionLocal
-from .models import Category, Product, ProductVariant
+from .models import Category, Product, ProductVariant, PromoCode
 
 DATA = [
     ('workflow','Рабочие процессы','notion-audit','Аудит и настройка рабочего пространства','Разберём структуру задач и подготовим понятную систему работы.','Приводим ваше рабочее пространство (Notion, Trello или похожий инструмент) в порядок: убираем хаос из разрозненных списков и делаем понятную систему, в которой видно, что делать сегодня и что в работе.\nРазбираем текущую структуру и находим слабые места\nПроектируем логичную структуру разделов и статусов задач\nНастраиваем шаблоны карточек под ваш тип задач\nГотовим короткую инструкцию, как пользоваться системой дальше\nСрок выполнения: 2-4 рабочих дня в зависимости от объёма.','https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=1200&q=80', [('Базовый','SRV-NOTION-B',Decimal('649.90'),None),('Расширенный','SRV-NOTION-X',Decimal('1490.00'),None)]),
@@ -12,6 +12,21 @@ DATA = [
     ('analytics','Аналитика','budget-setup','Настройка личного бюджета','Настроим категории, цели и сводный экран бюджета.','Настраиваем личный бюджет: категории расходов, финансовые цели и сводный экран, где сразу видно, сколько потрачено и сколько осталось.\nРазбираем ваши источники доходов и типичные траты\nНастраиваем категории и подкатегории расходов\nДобавляем финансовые цели с отслеживанием прогресса\nСобираем сводный экран с балансом по месяцам\nСрок выполнения: 1-2 рабочих дня.','https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1200&q=80', [('Стандарт','SRV-BUD-S',Decimal('1390.00'),None)]),
     ('design','Дизайн','presentation-design','Оформление презентации','Соберём аккуратную презентацию из ваших материалов.','Собираем аккуратную презентацию из ваших материалов: текстов, данных и изображений — в едином визуальном стиле, готовую к показу.\nРазбираем исходные материалы и логику повествования\nПодбираем визуальный стиль под тематику презентации\nОформляем слайды: структура, графика, акценты\nПередаём файл в редактируемом формате\nСрок выполнения: 2-4 рабочих дня в зависимости от количества слайдов.','https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=1200&q=80', [('До 8 слайдов','SRV-PRES-8',Decimal('3790.00'),None),('До 15 слайдов','SRV-PRES-15',Decimal('5790.80'),None)]),
     ('business','Бизнес','launch-pack','Пакет подготовки к запуску','Структура, таблица и визуальные материалы в одном заказе.','Комплексный пакет для запуска проекта: структура, финансовая таблица и визуальные материалы — всё в одном заказе, чтобы не собирать по частям.\nСтруктурируем материалы проекта по разделам\nГотовим базовую финансовую таблицу с ключевыми показателями\nОформляем набор визуальных материалов для запуска\nПередаём весь комплект в едином архиве с инструкцией\nСрок выполнения: 5-7 рабочих дней.','https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80', [('Комплекс','SRV-LAUNCH',Decimal('6874.35'),None)]),
+]
+
+GIFT_DATA = [
+    ('gift-cards', 'Подарочные карты', 'telegram-premium', 'Telegram Premium', 'Подписка Telegram Premium с цифровой выдачей после оплаты.', 'Подарочная карта Telegram Premium.\nВыберите срок подписки\nКод или инструкция выдаются после подтверждения оплаты\nРегион и условия активации указаны при выдаче\nСрок выдачи: обычно до 15 минут после оплаты.', '/gift-card.svg', [('3 месяца', 'GIFT-TG-3M', Decimal('1099.90'), None, None, Decimal('8.50'), 80), ('12 месяцев', 'GIFT-TG-12M', Decimal('3242.32'), Decimal('3490.00'), None, Decimal('7.50'), 60)]),
+    ('gift-cards', 'Подарочные карты', 'steam-wallet', 'Steam', 'Пополнение кошелька Steam для игрового аккаунта.', 'Подарочная карта Steam.\nВыберите номинал\nПеред покупкой проверьте регион вашего аккаунта\nКод или инструкция выдаются после подтверждения оплаты\nСрок выдачи: обычно до 15 минут после оплаты.', '/gift-card.svg', [('500 ₽', 'GIFT-STEAM-500', Decimal('562.50'), None, Decimal('500.00'), Decimal('12.50'), 200), ('1 000 ₽', 'GIFT-STEAM-1000', Decimal('1100.00'), None, Decimal('1000.00'), Decimal('10.00'), 180), ('2 500 ₽', 'GIFT-STEAM-2500', Decimal('2700.00'), None, Decimal('2500.00'), Decimal('8.00'), 90)]),
+    ('gift-cards', 'Подарочные карты', 'playstation-store', 'PlayStation Store', 'Пополнение баланса PlayStation Store.', 'Подарочная карта PlayStation Store.\nВыберите номинал\nПроверьте соответствие региона аккаунта и карты\nКод или инструкция выдаются после подтверждения оплаты\nСрок выдачи: обычно до 15 минут после оплаты.', '/gift-card.svg', [('10 USD', 'GIFT-PS-10', Decimal('1026.00'), None, Decimal('10.00'), Decimal('8.00'), 120, 'USD', Decimal('95.0000')), ('20 USD', 'GIFT-PS-20', Decimal('2042.50'), None, Decimal('20.00'), Decimal('7.50'), 110, 'USD', Decimal('95.0000')), ('50 USD', 'GIFT-PS-50', Decimal('4987.50'), None, Decimal('50.00'), Decimal('5.00'), 70, 'USD', Decimal('95.0000'))]),
+    ('gift-cards', 'Подарочные карты', 'google-play', 'Google Play', 'Подарочный баланс и приложения Google Play.', 'Подарочная карта Google Play.\nВыберите номинал\nКод активируется только в подходящем регионе аккаунта\nКод или инструкция выдаются после подтверждения оплаты\nСрок выдачи: обычно до 15 минут после оплаты.', '/gift-card.svg', [('10 USD', 'GIFT-GP-10', Decimal('1045.00'), None, Decimal('10.00'), Decimal('10.00'), 100, 'USD', Decimal('95.0000')), ('25 USD', 'GIFT-GP-25', Decimal('2506.88'), None, Decimal('25.00'), Decimal('5.50'), 100, 'USD', Decimal('95.0000'))]),
+    ('gift-cards', 'Подарочные карты', 'roblox', 'Roblox', 'Подарочная карта Roblox для Robux или Premium.', 'Подарочная карта Roblox.\nВыберите номинал\nАктивируйте код на официальном сайте Roblox\nКод или инструкция выдаются после подтверждения оплаты\nСрок выдачи: обычно до 15 минут после оплаты.', '/gift-card.svg', [('500 ₽', 'GIFT-RBX-500', Decimal('562.50'), None, Decimal('500.00'), Decimal('12.50'), 90), ('1 000 ₽', 'GIFT-RBX-1000', Decimal('1100.00'), None, Decimal('1000.00'), Decimal('10.00'), 75)]),
+    ('gift-cards', 'Подарочные карты', 'apple-gift-card', 'Apple Gift Card', 'Баланс для App Store и сервисов Apple.', 'Подарочная карта Apple.\nВыберите номинал\nПроверьте регион Apple ID до оформления\nКод или инструкция выдаются после подтверждения оплаты\nСрок выдачи: обычно до 15 минут после оплаты.', '/gift-card.svg', [('500 ₽', 'GIFT-APPLE-500', Decimal('562.50'), None, Decimal('500.00'), Decimal('12.50'), 80), ('1 000 ₽', 'GIFT-APPLE-1000', Decimal('1080.00'), None, Decimal('1000.00'), Decimal('8.00'), 65)]),
+]
+
+PROMO_DATA = [
+    ('WELCOME7', 'percent', Decimal('7.00'), Decimal('0.00'), None, 500),
+    ('GIFT10', 'percent', Decimal('10.00'), Decimal('1000.00'), Decimal('500.00'), 1000),
+    ('BUSINESS300', 'fixed', Decimal('300.00'), Decimal('2000.00'), None, 300),
 ]
 
 
@@ -25,7 +40,7 @@ def run():
         products = {p.slug: p for p in db.scalars(select(Product)).all()}
         variants = {v.sku: v for v in db.scalars(select(ProductVariant)).all()}
 
-        for cslug, cname, slug, title, short, desc, img, item_variants in DATA:
+        for cslug, cname, slug, title, short, desc, img, item_variants in DATA + GIFT_DATA:
             category = categories.get(cslug)
             if category is None:
                 category = Category(slug=cslug, name=cname)
@@ -49,7 +64,9 @@ def run():
                 products[slug] = product
                 created_products += 1
 
-            for name, sku, price, old_price in item_variants:
+            for item in item_variants:
+                name, sku, price, old_price, *gift_fields = item
+                face_value, commission_percent, stock_quantity, face_currency, exchange_rate = (gift_fields + [None, None, None, 'RUB', None])[:5]
                 if sku in variants:
                     continue
                 variant = ProductVariant(
@@ -58,12 +75,25 @@ def run():
                     sku=sku,
                     price=price,
                     old_price=old_price,
-                    delivery_type='service',
+                    delivery_type='gift_card' if cslug == 'gift-cards' else 'service',
+                    face_value=face_value,
+                    commission_percent=commission_percent,
+                    stock_quantity=stock_quantity,
+                    face_currency=face_currency or 'RUB',
+                    exchange_rate=exchange_rate,
                 )
                 db.add(variant)
                 db.flush()
                 variants[sku] = variant
                 created_variants += 1
+
+        promo_codes = {promo.code: promo for promo in db.scalars(select(PromoCode)).all()}
+        for code, discount_type, discount_value, minimum, maximum, limit in PROMO_DATA:
+            if code not in promo_codes:
+                db.add(PromoCode(
+                    code=code, discount_type=discount_type, discount_value=discount_value,
+                    min_order_amount=minimum, max_discount_amount=maximum, usage_limit=limit, active=True,
+                ))
 
         db.commit()
         print(f'Seed ready: +{created_products} products, +{created_variants} variants')

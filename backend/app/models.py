@@ -40,6 +40,11 @@ class ProductVariant(Base):
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     old_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     delivery_type: Mapped[str] = mapped_column(String(40), default='service')
+    face_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    stock_quantity: Mapped[int | None] = mapped_column(nullable=True)
+    face_currency: Mapped[str] = mapped_column(String(3), default='RUB')
+    exchange_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     product: Mapped[Product] = relationship(back_populates='variants')
 
 
@@ -53,7 +58,9 @@ class Customer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     external_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     external_source: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    bonus_balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal('0.00'))
     orders: Mapped[list['Order']] = relationship(back_populates='customer')
+    bonus_transactions: Mapped[list['BonusTransaction']] = relationship(back_populates='customer')
 
 
 class Order(Base):
@@ -64,12 +71,18 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(40), default='awaiting_payment', index=True)
     currency: Mapped[str] = mapped_column(String(3), default='RUB')
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal('0.00'))
+    promo_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    promo_discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal('0.00'))
+    bonus_spent_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal('0.00'))
+    bonus_earned_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal('0.00'))
     payment_provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
     payment_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     delivery_token: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     customer: Mapped[Customer] = relationship(back_populates='orders')
     items: Mapped[list['OrderItem']] = relationship(back_populates='order', cascade='all, delete-orphan')
+    bonus_transactions: Mapped[list['BonusTransaction']] = relationship(back_populates='order')
 
 
 class OrderItem(Base):
@@ -82,6 +95,34 @@ class OrderItem(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     quantity: Mapped[int] = mapped_column(default=1)
     order: Mapped[Order] = relationship(back_populates='items')
+
+
+class PromoCode(Base):
+    __tablename__ = 'promo_codes'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    discount_type: Mapped[str] = mapped_column(String(12), default='percent')
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    min_order_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal('0.00'))
+    max_discount_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    usage_limit: Mapped[int | None] = mapped_column(nullable=True)
+    usage_count: Mapped[int] = mapped_column(default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class BonusTransaction(Base):
+    __tablename__ = 'bonus_transactions'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey('customers.id', ondelete='CASCADE'), index=True)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey('orders.id', ondelete='SET NULL'), nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    kind: Mapped[str] = mapped_column(String(32))
+    description: Mapped[str] = mapped_column(String(240))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    customer: Mapped[Customer] = relationship(back_populates='bonus_transactions')
+    order: Mapped[Order | None] = relationship(back_populates='bonus_transactions')
 
 
 class SiteConfig(Base):

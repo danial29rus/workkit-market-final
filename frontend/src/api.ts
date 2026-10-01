@@ -1,4 +1,4 @@
-import type {AdminSummary,AuthResponse,Order,Product,SiteConfig,User} from './types'
+import type {AdminSummary,AuthResponse,Order,OrderQuote,Product,PromoCode,SiteConfig,User} from './types'
 const API=import.meta.env.VITE_API_URL||'/api'
 const token=()=>localStorage.getItem('workkit_token')
 const adminToken=()=>localStorage.getItem('workkit_admin_token')||''
@@ -27,7 +27,8 @@ export const api={
   register:(payload:{full_name:string;email:string;password:string;phone?:string})=>request<AuthResponse>('/auth/register',{method:'POST',body:JSON.stringify(payload)}),
   login:(email:string,password:string)=>request<AuthResponse>('/auth/login',{method:'POST',body:JSON.stringify({email,password})}),
   me:()=>request<User>('/auth/me'),
-  createOrder:(variant_id:number)=>request<Order>('/orders',{method:'POST',body:JSON.stringify({variant_id,quantity:1})}),
+  createOrder:(variant_id:number,quantity=1,promo_code?:string,bonus_amount=0)=>request<Order>('/orders',{method:'POST',body:JSON.stringify({variant_id,quantity,promo_code:promo_code||null,bonus_amount})}),
+  quoteOrder:(variant_id:number,quantity=1,promo_code?:string,bonus_amount=0)=>request<OrderQuote>('/orders/quote',{method:'POST',body:JSON.stringify({variant_id,quantity,promo_code:promo_code||null,bonus_amount})}),
   order:(id:string)=>request<Order>(`/orders/${id}`),
   orders:()=>request<Order[]>('/orders'),
   createPayment:()=>request('/payments/create',{method:'POST'}),
@@ -40,6 +41,9 @@ export const api={
     updateProduct:(id:number,payload:Record<string,unknown>)=>adminRequest<Product>(`/admin/products/${id}`,{method:'PATCH',body:JSON.stringify(payload)}),
     addVariant:(id:number,payload:Record<string,unknown>)=>adminRequest(`/admin/products/${id}/variants`,{method:'POST',body:JSON.stringify(payload)}),
     updateVariant:(id:number,payload:Record<string,unknown>)=>adminRequest(`/admin/variants/${id}`,{method:'PATCH',body:JSON.stringify(payload)}),
+    promotions:()=>adminRequest<PromoCode[]>('/admin/promotions'),
+    createPromotion:(payload:Record<string,unknown>)=>adminRequest<PromoCode>('/admin/promotions',{method:'POST',body:JSON.stringify(payload)}),
+    updatePromotion:(id:number,payload:Record<string,unknown>)=>adminRequest<PromoCode>(`/admin/promotions/${id}`,{method:'PATCH',body:JSON.stringify(payload)}),
     siteConfig:()=>adminRequest<SiteConfig>('/admin/site-config'),
     updateSiteConfig:(payload:SiteConfig)=>adminRequest<SiteConfig>('/admin/site-config',{method:'PUT',body:JSON.stringify(payload)}),
   }

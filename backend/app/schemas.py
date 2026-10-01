@@ -11,6 +11,11 @@ class VariantOut(BaseModel):
     price: Decimal
     old_price: Decimal | None = None
     delivery_type: str
+    face_value: Decimal | None = None
+    commission_percent: Decimal | None = None
+    stock_quantity: int | None = None
+    face_currency: str = 'RUB'
+    exchange_rate: Decimal | None = None
 
 
 class ProductOut(BaseModel):
@@ -45,6 +50,7 @@ class CustomerOut(BaseModel):
     full_name: str | None = None
     phone: str | None = None
     created_at: datetime
+    bonus_balance: Decimal
 
 
 class TokenOut(BaseModel):
@@ -56,6 +62,21 @@ class TokenOut(BaseModel):
 class OrderCreate(BaseModel):
     variant_id: int
     quantity: int = Field(default=1, ge=1, le=20)
+    promo_code: str | None = Field(default=None, max_length=40)
+    bonus_amount: Decimal = Field(default=Decimal('0.00'), ge=0)
+
+
+class OrderQuoteIn(OrderCreate):
+    pass
+
+
+class OrderQuoteOut(BaseModel):
+    subtotal_amount: Decimal
+    promo_code: str | None = None
+    promo_discount_amount: Decimal
+    bonus_spent_amount: Decimal
+    total_amount: Decimal
+    bonus_earned_amount: Decimal
 
 
 class OrderItemOut(BaseModel):
@@ -70,6 +91,11 @@ class OrderOut(BaseModel):
     status: str
     currency: str
     total_amount: Decimal
+    subtotal_amount: Decimal
+    promo_code: str | None = None
+    promo_discount_amount: Decimal
+    bonus_spent_amount: Decimal
+    bonus_earned_amount: Decimal
     delivery_token: str | None = None
     created_at: datetime
     customer_email: EmailStr
@@ -79,6 +105,27 @@ class OrderOut(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: str
+
+
+class PromoCodeCreate(BaseModel):
+    code: str = Field(min_length=3, max_length=40)
+    discount_type: str = Field(pattern='^(percent|fixed)$')
+    discount_value: Decimal = Field(gt=0)
+    min_order_amount: Decimal = Field(default=Decimal('0.00'), ge=0)
+    max_discount_amount: Decimal | None = Field(default=None, gt=0)
+    usage_limit: int | None = Field(default=None, gt=0)
+    active: bool = True
+
+
+class PromoCodeUpdate(BaseModel):
+    active: bool | None = None
+    usage_limit: int | None = Field(default=None, gt=0)
+
+
+class PromoCodeOut(PromoCodeCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    usage_count: int
 
 
 class ProductCreate(BaseModel):
@@ -108,6 +155,11 @@ class VariantCreate(BaseModel):
     price: Decimal = Field(gt=0)
     old_price: Decimal | None = None
     delivery_type: str = 'service'
+    face_value: Decimal | None = Field(default=None, gt=0)
+    commission_percent: Decimal | None = Field(default=None, ge=0, le=100)
+    stock_quantity: int | None = Field(default=None, ge=0)
+    face_currency: str = Field(default='RUB', min_length=3, max_length=3)
+    exchange_rate: Decimal | None = Field(default=None, gt=0)
 
 
 class VariantUpdate(BaseModel):
@@ -116,6 +168,11 @@ class VariantUpdate(BaseModel):
     price: Decimal | None = Field(default=None, gt=0)
     old_price: Decimal | None = None
     delivery_type: str | None = None
+    face_value: Decimal | None = Field(default=None, gt=0)
+    commission_percent: Decimal | None = Field(default=None, ge=0, le=100)
+    stock_quantity: int | None = Field(default=None, ge=0)
+    face_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    exchange_rate: Decimal | None = Field(default=None, gt=0)
 
 
 class SiteConfigOut(BaseModel):

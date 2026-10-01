@@ -1,3 +1,4 @@
+from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -5,16 +6,26 @@ from ..config import settings
 from ..db import get_db
 from ..dao.orders import OrderDAO
 from ..dao.products import ProductDAO
-from ..models import Category, Product, ProductVariant, SiteConfig
+from ..models import Category, Product, ProductVariant, PromoCode, SiteConfig
 from ..schemas import (
     OrderOut, OrderStatusUpdate, ProductCreate, ProductOut, ProductUpdate,
-    SiteConfigOut, SiteConfigUpdate, VariantCreate, VariantUpdate,
+    PromoCodeCreate, PromoCodeOut, PromoCodeUpdate, SiteConfigOut, SiteConfigUpdate, VariantCreate, VariantUpdate,
 )
 from ..serializers import order_to_dict, product_to_dict
 from ..services import OrderService
 from .site import get_or_create_config
 
 router = APIRouter(prefix='/admin', tags=['admin'])
+
+
+def sync_gift_card_price(variant: ProductVariant) -> None:
+    """A gift-card price is its nominal converted to RUB plus the configured service fee."""
+    if variant.delivery_type != 'gift_card' or variant.face_value is None or variant.commission_percent is None:
+        return
+    rate = Decimal(variant.exchange_rate) if variant.exchange_rate is not None else Decimal('1')
+    variant.price = (
+        Decimal(variant.face_value) * rate * (Decimal('1') + Decimal(variant.commission_percent) / Decimal('100'))
+    ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 def require_admin(x_admin_token: str = Header(default='')):
@@ -108,6 +119,7 @@ def create_variant(product_id: int, payload: VariantCreate, db: Session = Depend
     if db.scalar(select(ProductVariant).where(ProductVariant.sku == payload.sku)):
         raise HTTPException(409, 'sku_already_exists')
     variant = ProductVariant(product_id=product_id, **payload.model_dump())
+    sync_gift_card_price(variant)
     db.add(variant); db.commit(); db.refresh(variant)
     return {'id': variant.id}
 
@@ -119,8 +131,35 @@ def update_variant(variant_id: int, payload: VariantUpdate, db: Session = Depend
         raise HTTPException(404, 'variant_not_found')
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(variant, key, value)
+    sync_gift_card_price(variant)
     db.commit(); db.refresh(variant)
     return {'id': variant.id}
+
+
+@router.get('/promotions', dependencies=[Depends(require_admin)], response_model=list[PromoCodeOut])
+def list_promotions(db: Session = Depends(get_db)):
+    return list(db.scalars(select(PromoCode).order_by(PromoCode.id.desc())))
+
+
+@router.post('/promotions', dependencies=[Depends(require_admin)], response_model=PromoCodeOut)
+def create_promotion(payload: PromoCodeCreate, db: Session = Depends(get_db)):
+    code = payload.code.strip().upper()
+    if db.scalar(select(PromoCode).where(PromoCode.code == code)):
+        raise HTTPException(409, 'promo_code_already_exists')
+    promo = PromoCode(**{**payload.model_dump(), 'code': code})
+    db.add(promo); db.commit(); db.refresh(promo)
+    return promo
+
+
+@router.patch('/promotions/{promo_id}', dependencies=[Depends(require_admin)], response_model=PromoCodeOut)
+def update_promotion(promo_id: int, payload: PromoCodeUpdate, db: Session = Depends(get_db)):
+    promo = db.get(PromoCode, promo_id)
+    if not promo:
+        raise HTTPException(404, 'promo_not_found')
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(promo, key, value)
+    db.commit(); db.refresh(promo)
+    return promo
 
 
 @router.get('/site-config', dependencies=[Depends(require_admin)], response_model=SiteConfigOut)

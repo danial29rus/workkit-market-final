@@ -9,7 +9,7 @@ from ..security import create_access_token, current_customer, hash_password, ver
 router = APIRouter(prefix='/auth', tags=['auth'])
 
 def user_dict(user: Customer):
-    return {'id': user.id, 'email': user.email, 'full_name': user.full_name, 'phone': user.phone, 'created_at': user.created_at}
+    return {'id': user.id, 'email': user.email, 'full_name': user.full_name, 'phone': user.phone, 'created_at': user.created_at, 'bonus_balance': user.bonus_balance}
 
 @router.post('/register', response_model=TokenOut)
 def register(payload: RegisterIn, db: Session = Depends(get_db)):
