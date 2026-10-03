@@ -1,18 +1,21 @@
 import {useEffect,useState} from 'react'
 import {Link,NavLink,useNavigate,useLocation} from 'react-router-dom'
-import {Clock3,LogOut,Menu,Search,UserRound,X} from 'lucide-react'
+import {Clock3,LogOut,Menu,Search,ShoppingBag,UserRound,X} from 'lucide-react'
 import {session} from '../api'
 import type {User} from '../types'
 import {useSite} from '../site'
+import {giftCart} from '../giftCart'
 
 export default function Header(){
   const[user,setUser]=useState<User|null>(session.user())
   const[q,setQ]=useState('')
   const[menuOpen,setMenuOpen]=useState(false)
+  const[cartCount,setCartCount]=useState(giftCart.count())
   const site=useSite()
   const nav=useNavigate()
   const location=useLocation()
   useEffect(()=>{const h=()=>setUser(session.user());window.addEventListener('workkit-session',h);return()=>window.removeEventListener('workkit-session',h)},[])
+  useEffect(()=>{const h=()=>setCartCount(giftCart.count());window.addEventListener('workkit-gift-cart',h);return()=>window.removeEventListener('workkit-gift-cart',h)},[])
   useEffect(()=>{setMenuOpen(false)},[location.pathname])
   useEffect(()=>{document.body.classList.toggle('navLock',menuOpen);return()=>document.body.classList.remove('navLock')},[menuOpen])
   function submitSearch(e:React.FormEvent){e.preventDefault();nav(`/catalog${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`);setMenuOpen(false)}
@@ -23,13 +26,13 @@ export default function Header(){
       <Link className="brand" to="/"><span className="mark small">{site.brand_mark}</span>{site.brand_short}</Link>
       <NavLink className="catalogBtn" to="/catalog">{site.catalog_label}</NavLink><NavLink className="giftNav" to="/gift-cards">Подарочные карты</NavLink>
       <form className="search" onSubmit={submitSearch}><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Поиск по каталогу…"/></form>
-      <nav className="navDesktop"><Link to="/catalog">{site.catalog_label}</Link><Link to="/gift-cards">Подарочные карты</Link><Link to="/contacts">Контакты</Link>{user?<><Link to="/account"><UserRound size={18}/> {user.full_name?.split(' ')[0]||'Кабинет'}</Link><button className="navLogout" onClick={()=>session.logout()} title="Выйти"><LogOut size={18}/></button></>:<Link to="/login"><UserRound size={18}/> Войти</Link>}</nav>
+      <nav className="navDesktop"><Link to="/catalog">{site.catalog_label}</Link><Link to="/gift-cards">Подарочные карты</Link><Link className="giftCartLink" to="/gift-cart"><ShoppingBag size={17}/> Корзина{cartCount>0&&<b>{cartCount}</b>}</Link><Link to="/contacts">Контакты</Link>{user?<><Link to="/account"><UserRound size={18}/> {user.full_name?.split(' ')[0]||'Кабинет'}</Link><button className="navLogout" onClick={()=>session.logout()} title="Выйти"><LogOut size={18}/></button></>:<Link to="/login"><UserRound size={18}/> Войти</Link>}</nav>
       <button className="navToggle" aria-label={menuOpen?'Закрыть меню':'Открыть меню'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(v=>!v)}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
     </div></header>
     <div className={`navOverlay${menuOpen?' open':''}`} onClick={()=>setMenuOpen(false)}/>
     <nav className={`navMobile${menuOpen?' open':''}`}>
       <form className="searchMobile" onSubmit={submitSearch}><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Поиск по каталогу…"/></form>
-      <Link to="/catalog">{site.catalog_label}</Link><Link to="/gift-cards">Подарочные карты</Link>
+      <Link to="/catalog">{site.catalog_label}</Link><Link to="/gift-cards">Подарочные карты</Link><Link to="/gift-cart"><ShoppingBag size={18}/> Корзина {cartCount>0?`(${cartCount})`:''}</Link>
       <Link to="/contacts">Контакты</Link>
       <Link to="/offer">Условия работы</Link>
       <Link to="/privacy">Политика конфиденциальности</Link>

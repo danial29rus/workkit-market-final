@@ -70,6 +70,21 @@ class OrderQuoteIn(OrderCreate):
     pass
 
 
+class GiftCartItemIn(BaseModel):
+    variant_id: int
+    quantity: int = Field(default=1, ge=1, le=20)
+
+
+class GiftCartCreate(BaseModel):
+    items: list[GiftCartItemIn] = Field(min_length=1, max_length=20)
+    promo_code: str | None = Field(default=None, max_length=40)
+    bonus_amount: Decimal = Field(default=Decimal('0.00'), ge=0)
+
+
+class GiftCartQuoteIn(GiftCartCreate):
+    pass
+
+
 class OrderQuoteOut(BaseModel):
     subtotal_amount: Decimal
     promo_code: str | None = None

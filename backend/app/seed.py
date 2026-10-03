@@ -27,6 +27,24 @@ PROMO_DATA = [
     ('WELCOME7', 'percent', Decimal('7.00'), Decimal('0.00'), None, 500),
     ('GIFT10', 'percent', Decimal('10.00'), Decimal('1000.00'), Decimal('500.00'), 1000),
     ('BUSINESS300', 'fixed', Decimal('300.00'), Decimal('2000.00'), None, 300),
+    ('WEEKEND12', 'percent', Decimal('12.00'), Decimal('1500.00'), Decimal('700.00'), 200),
+    ('GIFT150', 'fixed', Decimal('150.00'), Decimal('1200.00'), None, 500),
+    ('MULTICARD5', 'percent', Decimal('5.00'), Decimal('2500.00'), None, 1000),
+]
+
+EXTRA_GIFT_VARIANTS = [
+    ('steam-wallet', '100 ₽', 'GIFT-STEAM-100', Decimal('112.50'), Decimal('100.00'), Decimal('12.50'), 300),
+    ('steam-wallet', '200 ₽', 'GIFT-STEAM-200', Decimal('222.00'), Decimal('200.00'), Decimal('11.00'), 280),
+    ('steam-wallet', '300 ₽', 'GIFT-STEAM-300', Decimal('330.00'), Decimal('300.00'), Decimal('10.00'), 250),
+    ('steam-wallet', '600 ₽', 'GIFT-STEAM-600', Decimal('654.00'), Decimal('600.00'), Decimal('9.00'), 180),
+    ('steam-wallet', '700 ₽', 'GIFT-STEAM-700', Decimal('752.50'), Decimal('700.00'), Decimal('7.50'), 160),
+    ('steam-wallet', '900 ₽', 'GIFT-STEAM-900', Decimal('963.00'), Decimal('900.00'), Decimal('7.00'), 140),
+    ('steam-wallet', '1 500 ₽', 'GIFT-STEAM-1500', Decimal('1590.00'), Decimal('1500.00'), Decimal('6.00'), 110),
+    ('steam-wallet', '5 000 ₽', 'GIFT-STEAM-5000', Decimal('5250.00'), Decimal('5000.00'), Decimal('5.00'), 50),
+    ('apple-gift-card', '2 500 ₽', 'GIFT-APPLE-2500', Decimal('2675.00'), Decimal('2500.00'), Decimal('7.00'), 45),
+    ('apple-gift-card', '5 000 ₽', 'GIFT-APPLE-5000', Decimal('5250.00'), Decimal('5000.00'), Decimal('5.00'), 30),
+    ('roblox', '300 ₽', 'GIFT-RBX-300', Decimal('331.50'), Decimal('300.00'), Decimal('10.50'), 160),
+    ('roblox', '2 000 ₽', 'GIFT-RBX-2000', Decimal('2130.00'), Decimal('2000.00'), Decimal('6.50'), 70),
 ]
 
 
@@ -86,6 +104,17 @@ def run():
                 db.flush()
                 variants[sku] = variant
                 created_variants += 1
+
+        for product_slug, name, sku, price, face_value, commission_percent, stock_quantity in EXTRA_GIFT_VARIANTS:
+            if sku in variants:
+                continue
+            product = products[product_slug]
+            db.add(ProductVariant(
+                product_id=product.id, name=name, sku=sku, price=price, delivery_type='gift_card',
+                face_value=face_value, commission_percent=commission_percent, stock_quantity=stock_quantity,
+                face_currency='RUB',
+            ))
+            created_variants += 1
 
         promo_codes = {promo.code: promo for promo in db.scalars(select(PromoCode)).all()}
         for code, discount_type, discount_value, minimum, maximum, limit in PROMO_DATA:

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..dao.orders import OrderDAO
 from ..models import Customer
-from ..schemas import OrderCreate, OrderOut, OrderQuoteIn, OrderQuoteOut
+from ..schemas import GiftCartCreate, GiftCartQuoteIn, OrderCreate, OrderOut, OrderQuoteIn, OrderQuoteOut
 from ..security import current_customer
 from ..serializers import order_to_dict
 from ..services import OrderService
@@ -25,7 +25,25 @@ def quote_order(payload: OrderQuoteIn, db: Session = Depends(get_db), customer: 
         quote = OrderService.quote(db, customer, payload.variant_id, payload.quantity, payload.promo_code, payload.bonus_amount)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    return {key: value for key, value in quote.items() if key != 'variant'}
+    return {key: value for key, value in quote.items() if key not in {'variants', 'quantities'}}
+
+
+@router.post('/gift-cart/quote', response_model=OrderQuoteOut)
+def quote_gift_cart(payload: GiftCartQuoteIn, db: Session = Depends(get_db), customer: Customer = Depends(current_customer)):
+    try:
+        quote = OrderService.quote_gift_cart(db, customer, [(item.variant_id, item.quantity) for item in payload.items], payload.promo_code, payload.bonus_amount)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {key: value for key, value in quote.items() if key not in {'variants', 'quantities'}}
+
+
+@router.post('/gift-cart', response_model=OrderOut)
+def create_gift_cart(payload: GiftCartCreate, db: Session = Depends(get_db), customer: Customer = Depends(current_customer)):
+    try:
+        order = OrderService.create_gift_cart(db, customer, [(item.variant_id, item.quantity) for item in payload.items], payload.promo_code, payload.bonus_amount)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return order_to_dict(OrderDAO.by_public_id(db, order.public_id))
 
 @router.get('/{public_id}', response_model=OrderOut)
 def get_order(public_id: str, db: Session = Depends(get_db), customer: Customer = Depends(current_customer)):
