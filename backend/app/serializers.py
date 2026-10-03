@@ -18,7 +18,9 @@ def order_to_dict(o):
         'created_at': o.created_at, 'customer_email': o.customer.email,
         'customer_name': o.customer.full_name,
         'items': [
-            {'title': i.title_snapshot, 'variant': i.variant_snapshot, 'unit_price': i.unit_price, 'quantity': i.quantity}
+            {'title': i.title_snapshot, 'variant': i.variant_snapshot, 'unit_price': i.unit_price, 'quantity': i.quantity,
+             'delivery_type': i.variant.delivery_type if i.variant else 'service',
+             'product_slug': i.variant.product.slug if i.variant else None}
             for i in o.items
         ]
     }

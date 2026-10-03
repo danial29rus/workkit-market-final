@@ -1,3 +1,19 @@
 import {Link} from 'react-router-dom'
+import {Mail,Phone,Clock3} from 'lucide-react'
 import {useSite} from '../site'
-export default function Footer(){const site=useSite();return <footer><div className="container footerGrid"><div><div className="brandbig"><span className="mark small">{site.brand_mark}</span> {site.brand_name}</div><p>{site.tagline}</p></div><div><b>Клиентам</b><Link to="/catalog">{site.catalog_label}</Link><Link to="/account">Мои заказы</Link><Link to="/contacts">Поддержка</Link></div><div><b>Документы</b><Link to="/offer">Публичная оферта</Link><Link to="/privacy">Политика конфиденциальности</Link><Link to="/contacts">Контакты и реквизиты</Link></div><div><b>Связаться</b><a href={`mailto:${site.support_email}`}>{site.support_email}</a>{site.support_phone&&<a href={`tel:${site.support_phone.replace(/[^+\d]/g,'')}`}>{site.support_phone}</a>}<span>{site.work_hours}</span></div></div><div className="container copyright">© 2026 {site.brand_name}</div></footer>}
+export default function Footer(){
+  const site=useSite()
+  return <footer className="siteFooter">
+    <div className="container footerGrid">
+      <div className="footerBrand">
+        <Link className="brand light" to="/"><span className="mark">{site.brand_mark}</span><span className="brandName">{site.brand_name}</span></Link>
+        <p>{site.tagline}. Услуги для бизнеса и цифровые подарочные карты — в одном аккаунте, с общей историей заказов и бонусами.</p>
+      </div>
+      <div><b>Услуги</b><Link to="/catalog">Каталог услуг</Link><Link to="/#calculator">Калькулятор бюджета</Link><Link to="/contacts">Индивидуальная задача</Link></div>
+      <div><b>Подарочные карты</b><Link to="/gift-cards">Все сервисы</Link><Link to="/gift-cart">Корзина</Link><Link to="/account?tab=bonuses">Бонусы</Link></div>
+      <div><b>Документы</b><Link to="/offer">Публичная оферта</Link><Link to="/privacy">Политика конфиденциальности</Link><Link to="/contacts">Реквизиты</Link></div>
+      <div className="footerContacts"><b>Поддержка</b><a href={`mailto:${site.support_email}`}><Mail size={15}/>{site.support_email}</a>{site.support_phone&&<a href={`tel:${site.support_phone.replace(/[^+\d]/g,'')}`}><Phone size={15}/>{site.support_phone}</a>}<span><Clock3 size={15}/>{site.work_hours}</span></div>
+    </div>
+    <div className="container footerBottom"><span>© {new Date().getFullYear()} {site.brand_name}</span><span>Номер карты и CVV сайт не запрашивает и не хранит</span></div>
+  </footer>
+}

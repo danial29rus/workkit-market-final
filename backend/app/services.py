@@ -16,7 +16,7 @@ def currency(value: Decimal) -> Decimal:
 
 class OrderService:
     @staticmethod
-    def _quote_lines(db: Session, customer: Customer, lines: list[tuple[int, int]], promo_code: str | None, bonus_amount: Decimal, gift_only: bool = False) -> dict:
+    def _quote_lines(db: Session, customer: Customer | None, lines: list[tuple[int, int]], promo_code: str | None, bonus_amount: Decimal, gift_only: bool = False) -> dict:
         quantities = Counter()
         for variant_id, quantity in lines:
             quantities[variant_id] += quantity
@@ -39,24 +39,26 @@ class OrderService:
             invalid = not promo or not promo.active or (promo.starts_at and promo.starts_at > now) or (promo.ends_at and promo.ends_at < now)
             if invalid: raise ValueError('promo_not_available')
             if promo.usage_limit is not None and promo.usage_count >= promo.usage_limit: raise ValueError('promo_limit_reached')
-            already_used = db.scalar(select(Order.id).where(Order.customer_id == customer.id, Order.promo_code == code, Order.status.not_in({'cancelled', 'refunded'})))
-            if already_used: raise ValueError('promo_already_used')
+            if customer is not None:
+                already_used = db.scalar(select(Order.id).where(Order.customer_id == customer.id, Order.promo_code == code, Order.status.not_in({'cancelled', 'refunded'})))
+                if already_used: raise ValueError('promo_already_used')
             if subtotal < Decimal(promo.min_order_amount): raise ValueError('promo_minimum_not_reached')
             discount = subtotal * Decimal(promo.discount_value) / Decimal('100') if promo.discount_type == 'percent' else Decimal(promo.discount_value)
             if promo.max_discount_amount is not None: discount = min(discount, Decimal(promo.max_discount_amount))
             discount = min(currency(discount), subtotal)
         requested_bonus = currency(Decimal(bonus_amount))
-        if requested_bonus > Decimal(customer.bonus_balance): raise ValueError('bonus_balance_exceeded')
+        if requested_bonus and customer is None: raise ValueError('authentication_required')
+        if customer is not None and requested_bonus > Decimal(customer.bonus_balance): raise ValueError('bonus_balance_exceeded')
         bonus_spent = min(requested_bonus, max(Decimal('0.00'), subtotal - discount))
         total = currency(subtotal - discount - bonus_spent)
         return {'variants': by_id, 'quantities': quantities, 'subtotal_amount': subtotal, 'promo_code': code, 'promo_discount_amount': discount, 'bonus_spent_amount': bonus_spent, 'total_amount': total, 'bonus_earned_amount': currency(total * BONUS_RATE)}
 
     @staticmethod
-    def quote(db: Session, customer: Customer, variant_id: int, quantity: int = 1, promo_code: str | None = None, bonus_amount: Decimal = Decimal('0.00')) -> dict:
+    def quote(db: Session, customer: Customer | None, variant_id: int, quantity: int = 1, promo_code: str | None = None, bonus_amount: Decimal = Decimal('0.00')) -> dict:
         return OrderService._quote_lines(db, customer, [(variant_id, quantity)], promo_code, bonus_amount)
 
     @staticmethod
-    def quote_gift_cart(db: Session, customer: Customer, lines: list[tuple[int, int]], promo_code: str | None = None, bonus_amount: Decimal = Decimal('0.00')) -> dict:
+    def quote_gift_cart(db: Session, customer: Customer | None, lines: list[tuple[int, int]], promo_code: str | None = None, bonus_amount: Decimal = Decimal('0.00')) -> dict:
         return OrderService._quote_lines(db, customer, lines, promo_code, bonus_amount, gift_only=True)
 
     @staticmethod

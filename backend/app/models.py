@@ -28,7 +28,10 @@ class Product(Base):
     category_id: Mapped[int] = mapped_column(ForeignKey('categories.id'))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     category: Mapped[Category] = relationship(back_populates='products')
-    variants: Mapped[list['ProductVariant']] = relationship(back_populates='product', cascade='all, delete-orphan')
+    variants: Mapped[list['ProductVariant']] = relationship(
+        back_populates='product', cascade='all, delete-orphan',
+        order_by='(ProductVariant.face_value, ProductVariant.price, ProductVariant.id)',
+    )
 
 
 class ProductVariant(Base):
@@ -95,6 +98,7 @@ class OrderItem(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     quantity: Mapped[int] = mapped_column(default=1)
     order: Mapped[Order] = relationship(back_populates='items')
+    variant: Mapped[ProductVariant] = relationship()
 
 
 class PromoCode(Base):

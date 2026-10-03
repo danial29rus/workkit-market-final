@@ -1,3 +1,82 @@
-import{FormEvent,useEffect,useState}from'react';import{Link,useNavigate,useParams,useSearchParams}from'react-router-dom';import{api,session}from'../api';import type{OrderQuote,Product,User,Variant}from'../types';import{CreditCard,Gift,ShieldCheck,UserRound,WalletCards}from'lucide-react';import{useSite}from'../site'
-const money=(v:string|number)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB'}).format(Number(v))
-export default function Checkout(){const{variantId}=useParams();const nav=useNavigate();const[params]=useSearchParams();const[p,setP]=useState<Product[]>([]);const[user,setUser]=useState<User|null>(session.user());const[busy,setBusy]=useState(false);const[promo,setPromo]=useState('');const[bonus,setBonus]=useState('0');const[quote,setQuote]=useState<OrderQuote|null>(null);const[quoteError,setQuoteError]=useState('');const site=useSite();const qty=Math.max(1,Math.min(20,Number(params.get('qty')||1)));useEffect(()=>{api.products().then(setP);if(session.token())api.me().then(x=>{setUser(x);localStorage.setItem('workkit_user',JSON.stringify(x))}).catch(()=>session.logout())},[]);let product:Product|undefined,variant:Variant|undefined;for(const x of p){const v=x.variants.find(v=>v.id===Number(variantId));if(v){product=x;variant=v;break}}async function applyDiscount(){if(!variant||!user)return;setQuoteError('');try{setQuote(await api.quoteOrder(variant.id,qty,promo,Number(bonus)||0))}catch(e:any){setQuote(null);setQuoteError(e.message||'Не удалось применить скидку')}}async function submit(e:FormEvent){e.preventDefault();if(!variant||!user)return;setBusy(true);try{const order=await api.createOrder(variant.id,qty,promo,Number(bonus)||0);localStorage.setItem('workkit_last_order',order.public_id);nav(`/success?order=${order.public_id}`)}catch(e:any){setQuoteError(e.message||'Не удалось создать заказ')}finally{setBusy(false)}}if(!product||!variant)return <div className="container page">Загрузка…</div>;const isGift=product.category_slug==='gift-cards';const current=quote||{subtotal_amount:(Number(variant.price)*qty).toFixed(2),promo_discount_amount:'0',bonus_spent_amount:'0',total_amount:(Number(variant.price)*qty).toFixed(2),bonus_earned_amount:(Number(variant.price)*qty*.02).toFixed(2),promo_code:null};return <div className="container page"><div className="pageTitle"><span className="crumb">Главная / Оформление</span><h1>{isGift?'Оформление подарочной карты':'Оформление заказа'}</h1><p>{isGift?'Код выдаётся только после подтверждения оплаты. Проверьте регион аккаунта перед покупкой.':'Сейчас создаётся заказ без списания средств. После подключения агрегатора кнопка оплаты будет вести на защищённую страницу платёжного партнёра.'}</p></div><div className="checkout"><form className="checkoutForm" onSubmit={submit}><div className="formCard"><h2>Заказчик</h2>{user?<div className="signedCustomer"><UserRound/><div><b>{user.full_name||'Клиент'}</b><span>{user.email}{user.phone?` · ${user.phone}`:''}</span></div><Link to="/account">Кабинет</Link></div>:<div className="loginRequired"><UserRound/><div><b>Нужен аккаунт</b><span>Чтобы заказ сохранился в личном кабинете, войдите или зарегистрируйтесь.</span></div><Link className="primary" to="/login">Войти</Link></div>}</div><div className="formCard"><h2>Промокод и бонусы</h2><div className="discountInput"><input value={promo} onChange={e=>setPromo(e.target.value.toUpperCase())} placeholder="Промокод"/><button type="button" className="secondary" onClick={applyDiscount} disabled={!user}>Применить</button></div><label className="bonusInput"><span><WalletCards/> Бонусный баланс: <b>{money(user?.bonus_balance||'0')}</b></span><input type="number" min="0" step="0.01" value={bonus} onChange={e=>setBonus(e.target.value)} onBlur={applyDiscount} placeholder="0.00"/></label>{quoteError&&<div className="formError">{quoteError}</div>}<small>За оплаченный заказ начислим 2% бонусами. Бонусы можно списать до суммы заказа.</small></div><div className="formCard disabledPay"><h2>Оплата</h2><div className="payOption"><CreditCard/><div><b>Платёжный агрегатор</b><span>Интеграция будет добавлена следующим этапом</span></div><span className="statusPill">Скоро</span></div><p>Номер карты, срок действия и CVV сайт не запрашивает и не хранит.</p></div><label className="accept"><input type="checkbox" required/><span>Я принимаю <Link to="/offer">условия публичной оферты</Link> и согласен с обработкой данных согласно <Link to="/privacy">политике конфиденциальности</Link>.</span></label><button className="primary wide" disabled={busy||!user}>{busy?'Создаём заказ…':user?site.order_cta:'Сначала войдите в аккаунт'}</button></form><aside className="summary"><h3>Ваш заказ</h3><div className="summaryProduct"><img src={product.image_url}/><div><b>{product.title}</b><span>{isGift?'Номинал: ': 'Пакет: '}{variant.name} · {qty} шт.</span></div></div><div className="line"><span>Стоимость</span><b>{money(current.subtotal_amount)}</b></div>{Number(current.promo_discount_amount)>0&&<div className="line discountLine"><span>Промокод {current.promo_code}</span><b>−{money(current.promo_discount_amount)}</b></div>}{Number(current.bonus_spent_amount)>0&&<div className="line discountLine"><span>Списано бонусов</span><b>−{money(current.bonus_spent_amount)}</b></div>}<div className="total"><span>Итого</span><b>{money(current.total_amount)}</b></div><div className="safe"><ShieldCheck/><span>{isGift?<><Gift size={15}/> Код выдаётся после подтверждения оплаты.</>:<>После создания заказ сразу появится в личном кабинете.</>}</span></div></aside></div></div>}
+import {FormEvent,useEffect,useMemo,useState} from 'react'
+import {Link,useLocation,useNavigate,useParams,useSearchParams} from 'react-router-dom'
+import {ArrowRight,CreditCard,LogIn,PackageSearch,ShieldCheck,UserRound} from 'lucide-react'
+import {api} from '../api'
+import {useSite} from '../site'
+import {setArea,useDocumentTitle,useProducts,useUser} from '../hooks'
+import {Direction,EmptyState,GiftArt,PageHead,QtyStepper,Skeleton} from '../components/ui'
+import {DiscountBox,Totals,usePricing} from '../components/Pricing'
+import {GIFT_CATEGORY,money} from '../lib/format'
+import {errorText} from '../lib/errors'
+
+export default function Checkout(){
+  const{variantId}=useParams()
+  const nav=useNavigate()
+  const location=useLocation()
+  const[params,setParams]=useSearchParams()
+  const site=useSite()
+  const{user}=useUser()
+  const{products,loading}=useProducts()
+  const[busy,setBusy]=useState(false)
+  const[accepted,setAccepted]=useState(false)
+  const[submitError,setSubmitError]=useState('')
+  const qty=Math.max(1,Math.min(20,Number(params.get('qty')||1)))
+  const found=useMemo(()=>{for(const product of products){const variant=product.variants.find(v=>v.id===Number(variantId));if(variant)return{product,variant}}return null},[products,variantId])
+  const isGift=found?.product.category_slug===GIFT_CATEGORY
+  useEffect(()=>{if(found)setArea(isGift?'gifts':'services');return()=>setArea(null)},[found,isGift])
+  useDocumentTitle('Оформление')
+  const subtotal=found?Number(found.variant.price)*qty:0
+  const pricing=usePricing(found?`${found.variant.id}x${qty}`:'',(promo,bonus)=>api.quoteOrder(Number(variantId),qty,promo,bonus),subtotal,user)
+  const here=location.pathname+location.search
+
+  async function submit(e:FormEvent){
+    e.preventDefault()
+    if(!found||!user)return
+    setBusy(true);setSubmitError('')
+    try{const order=await api.createOrder(found.variant.id,qty,pricing.applied,pricing.bonus);nav(`/success?order=${order.public_id}`)}
+    catch(err){setSubmitError(errorText(err,'Не удалось создать заказ'))}
+    finally{setBusy(false)}
+  }
+  if(loading)return <div className="container page"><Skeleton h={60} w="50%"/><div className="cartLayout" style={{marginTop:24}}><Skeleton h={420} r={24}/><Skeleton h={360} r={24}/></div></div>
+  if(!found)return <div className="container page"><EmptyState icon={<PackageSearch/>} title="Позиция не найдена" text="Возможно, она снята с продажи. Выберите другой вариант в каталоге."><Link className="btn primary" to="/catalog">Каталог услуг</Link><Link className="btn ghost" to="/gift-cards">Подарочные карты</Link></EmptyState></div>
+  const{product,variant}=found
+  const maxQty=Math.min(20,variant.stock_quantity??20)
+  return <div className="container page">
+    <PageHead crumbs={[{label:isGift?'Подарочные карты':site.catalog_label,to:isGift?'/gift-cards':'/catalog'},{label:product.title,to:`/product/${product.slug}`},{label:'Оформление'}]}
+      title={isGift?'Оформление подарочной карты':'Оформление заявки'}
+      text={isGift?'Код выдаётся только после подтверждения оплаты. Проверьте регион аккаунта перед покупкой.':'Заказ появится в личном кабинете сразу после оформления. Детали задачи уточним после заявки.'}/>
+    <form className="cartLayout" onSubmit={submit}>
+      <div className="stack">
+        <section className="panel">
+          <div className="panelHead"><h2><span className="stepNum">1</span>Заказчик</h2></div>
+          {user?<div className="customerRow"><span className="avatar lg">{(user.full_name||user.email).slice(0,1).toUpperCase()}</span><div><b>{user.full_name||'Клиент'}</b><span>{user.email}{user.phone?` · ${user.phone}`:''}</span></div><Link className="link" to="/account?tab=profile">Изменить</Link></div>
+          :<div className="customerRow guest"><span className="avatar lg"><UserRound size={20}/></span><div><b>Войдите, чтобы оформить</b><span>Заказ сохранится в личном кабинете, а бонусы начислятся на ваш счёт.</span></div><Link className="btn primary" to={`/login?next=${encodeURIComponent(here)}`}><LogIn size={17}/>Войти</Link></div>}
+        </section>
+        <section className="panel">
+          <div className="panelHead"><h2><span className="stepNum">2</span>Скидки</h2></div>
+          <DiscountBox p={pricing} user={user} loginNext={here}/>
+        </section>
+        <section className="panel">
+          <div className="panelHead"><h2><span className="stepNum">3</span>Оплата</h2><span className="soon">Скоро</span></div>
+          <div className="payOption"><CreditCard size={22}/><div><b>Онлайн-оплата через платёжного партнёра</b><span>Подключается отдельным этапом. Сейчас заказ создаётся со статусом «Ожидает оплаты».</span></div></div>
+          <p className="fine"><ShieldCheck size={14}/>Номер карты, срок действия и CVV сайт не запрашивает и не хранит.</p>
+        </section>
+      </div>
+      <aside className="summaryCard">
+        <h2>Ваш заказ</h2>
+        <div className="summaryItem">
+          {isGift?<GiftArt title={product.title} size="sm"/>:<img src={product.image_url} alt=""/>}
+          <div><Direction kind={isGift?'gifts':'services'} small/><b>{product.title}</b><span>{isGift?'Номинал':'Пакет'}: {variant.name}</span><small>{money(variant.price)} за шт.</small></div>
+        </div>
+        {isGift&&<div className="qtyRow"><span className="label">Количество</span><QtyStepper size="sm" value={qty} max={maxQty} onChange={v=>setParams({qty:String(v)},{replace:true})}/></div>}
+        <Totals p={pricing}/>
+        <label className="accept"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>Принимаю <Link to="/offer" target="_blank">условия оферты</Link> и согласен с <Link to="/privacy" target="_blank">политикой конфиденциальности</Link></span></label>
+        {submitError&&<div className="formError" role="alert">{submitError}</div>}
+        {user
+          ?<button className={`btn ${isGift?'gift':'primary'} lg block`} disabled={busy||!accepted||pricing.loading}>{busy?'Создаём заказ…':<>{isGift?'Оформить заказ':site.order_cta}<ArrowRight size={18}/></>}</button>
+          :<Link className={`btn ${isGift?'gift':'primary'} lg block`} to={`/login?next=${encodeURIComponent(here)}`}><LogIn size={18}/>Войти и оформить</Link>}
+        {user&&!accepted&&<p className="fine center">Отметьте согласие с условиями, чтобы продолжить</p>}
+      </aside>
+    </form>
+  </div>
+}

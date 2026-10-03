@@ -1,4 +1,83 @@
-import{useEffect,useMemo,useState}from'react';import{Link,useNavigate}from'react-router-dom';import{api,session}from'../api';import{giftCart,type GiftCartLine}from'../giftCart';import type{OrderQuote,Product,User,Variant}from'../types';import{Gift,Minus,Plus,ShieldCheck,Trash2,WalletCards}from'lucide-react'
-const money=(v:string|number)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB'}).format(Number(v))
+import {useEffect,useMemo,useState} from 'react'
+import {Link,useNavigate} from 'react-router-dom'
+import {ArrowLeft,ArrowRight,Gift,LogIn,ShieldCheck,ShoppingBag,Trash2} from 'lucide-react'
+import {api} from '../api'
+import {giftCart} from '../giftCart'
+import type {Product,Variant} from '../types'
+import {useDocumentTitle,useGiftCart,useProducts,useUser} from '../hooks'
+import {Direction,EmptyState,GiftArt,PageHead,QtyStepper,Skeleton,useToast} from '../components/ui'
+import {DiscountBox,Totals,usePricing} from '../components/Pricing'
+import {money} from '../lib/format'
+import {errorText} from '../lib/errors'
+
 type Resolved={product:Product;variant:Variant;quantity:number}
-export default function GiftCart(){const nav=useNavigate();const[products,setProducts]=useState<Product[]>([]);const[lines,setLines]=useState<GiftCartLine[]>(giftCart.items());const[user,setUser]=useState<User|null>(session.user());const[promo,setPromo]=useState('');const[bonus,setBonus]=useState('0');const[quote,setQuote]=useState<OrderQuote|null>(null);const[error,setError]=useState('');const[busy,setBusy]=useState(false);useEffect(()=>{api.products().then(setProducts);if(session.token())api.me().then(x=>{setUser(x);localStorage.setItem('workkit_user',JSON.stringify(x))}).catch(()=>session.logout());const h=()=>setLines(giftCart.items());window.addEventListener('workkit-gift-cart',h);return()=>window.removeEventListener('workkit-gift-cart',h)},[]);const items=useMemo<Resolved[]>(()=>lines.flatMap(line=>{for(const product of products){const variant=product.variants.find(v=>v.id===line.variantId);if(variant)return[{product,variant,quantity:line.quantity}]}return[]}),[lines,products]);const rawTotal=items.reduce((sum,item)=>sum+Number(item.variant.price)*item.quantity,0);function change(id:number,quantity:number){giftCart.update(id,quantity);setQuote(null)}function remove(id:number){giftCart.remove(id);setQuote(null)}async function apply(){if(!user||!items.length)return;setError('');try{setQuote(await api.quoteGiftCart(items.map(item=>({variant_id:item.variant.id,quantity:item.quantity})),promo,Number(bonus)||0))}catch(e:any){setQuote(null);setError(e.message||'Не удалось применить скидку')}}async function submit(){if(!user||!items.length)return;setBusy(true);setError('');try{const order=await api.createGiftCart(items.map(item=>({variant_id:item.variant.id,quantity:item.quantity})),promo,Number(bonus)||0);giftCart.clear();localStorage.setItem('workkit_last_order',order.public_id);nav(`/success?order=${order.public_id}`)}catch(e:any){setError(e.message||'Не удалось создать заказ')}finally{setBusy(false)}}const total=quote?Number(quote.total_amount):rawTotal;return <div className="container page giftCartPage"><div className="pageTitle"><span className="crumb">Подарочные карты / Корзина</span><h1>Корзина подарочных карт</h1><p>В одном заказе можно объединить разные номиналы и сервисы. Услуги оформляются отдельно.</p></div>{!items.length?<div className="empty">Корзина пуста. <Link to="/gift-cards">Выбрать подарочные карты</Link></div>:<div className="giftCartLayout"><section className="giftCartItems">{items.map(item=><article className="cartGiftItem" key={item.variant.id}><div className="cartGiftMark"><Gift/></div><div className="grow"><b>{item.product.title}</b><span>{item.variant.name}{item.variant.commission_percent?` · комиссия ${item.variant.commission_percent}%`:''}</span><strong>{money(item.variant.price)}</strong></div><div className="cartQty"><button onClick={()=>change(item.variant.id,item.quantity-1)} disabled={item.quantity===1}><Minus/></button><b>{item.quantity}</b><button onClick={()=>change(item.variant.id,item.quantity+1)} disabled={item.quantity>=20||item.variant.stock_quantity===item.quantity}><Plus/></button></div><button className="cartRemove" onClick={()=>remove(item.variant.id)} aria-label="Удалить"><Trash2/></button></article>)}</section><aside className="giftCartSummary"><h2>Оформление</h2><div className="discountInput"><input value={promo} onChange={e=>setPromo(e.target.value.toUpperCase())} placeholder="Промокод"/><button className="secondary" onClick={apply} disabled={!user}>Применить</button></div><label className="bonusInput"><span><WalletCards/> Бонусы: <b>{money(user?.bonus_balance||'0')}</b></span><input type="number" min="0" step="0.01" value={bonus} onChange={e=>setBonus(e.target.value)} onBlur={apply}/></label>{error&&<div className="formError">{error}</div>}<div className="cartTotals"><div><span>Товары ({items.length})</span><b>{money(quote?.subtotal_amount||rawTotal)}</b></div>{quote&&Number(quote.promo_discount_amount)>0&&<div className="discountLine"><span>Скидка</span><b>−{money(quote.promo_discount_amount)}</b></div>}{quote&&Number(quote.bonus_spent_amount)>0&&<div className="discountLine"><span>Бонусы</span><b>−{money(quote.bonus_spent_amount)}</b></div>}<div className="cartGrand"><span>К оплате</span><b>{money(total)}</b></div></div>{user?<button className="primary wide" onClick={submit} disabled={busy}>{busy?'Создаём заказ…':'Оформить заказ'}</button>:<Link className="primary wide" to="/login">Войти для оформления</Link>}<small><ShieldCheck size={14}/> После оплаты коды будут выданы в одном заказе.</small></aside></div>}</div>}
+
+export default function GiftCart(){
+  useDocumentTitle('Корзина')
+  const nav=useNavigate()
+  const toast=useToast()
+  const{products,loading}=useProducts()
+  const{lines}=useGiftCart()
+  const{user}=useUser()
+  const[busy,setBusy]=useState(false)
+  const[submitError,setSubmitError]=useState('')
+  const items=useMemo<Resolved[]>(()=>lines.flatMap(line=>{
+    for(const product of products){const variant=product.variants.find(v=>v.id===line.variantId);if(variant)return[{product,variant,quantity:line.quantity}]}
+    return[]
+  }),[lines,products])
+  // Drop lines whose nominal was removed from the catalog so the header count stays honest.
+  useEffect(()=>{if(!loading&&products.length)lines.filter(l=>!items.some(i=>i.variant.id===l.variantId)).forEach(l=>giftCart.remove(l.variantId))},[loading,products.length,lines,items])
+  const payload=items.map(i=>({variant_id:i.variant.id,quantity:i.quantity}))
+  const basketKey=payload.map(i=>`${i.variant_id}x${i.quantity}`).join(',')
+  const subtotal=items.reduce((s,i)=>s+Number(i.variant.price)*i.quantity,0)
+  const count=items.reduce((s,i)=>s+i.quantity,0)
+  const pricing=usePricing(basketKey,(promo,bonus)=>api.quoteGiftCart(payload,promo,bonus),subtotal,user)
+
+  function remove(item:Resolved){
+    giftCart.remove(item.variant.id)
+    toast({title:'Удалено из корзины',text:`${item.product.title} · ${item.variant.name}`})
+  }
+  async function submit(){
+    if(!user||!items.length)return
+    setBusy(true);setSubmitError('')
+    try{
+      const order=await api.createGiftCart(payload,pricing.applied,pricing.bonus)
+      giftCart.clear()
+      nav(`/success?order=${order.public_id}`)
+    }catch(e){setSubmitError(errorText(e,'Не удалось создать заказ'))}
+    finally{setBusy(false)}
+  }
+
+  const head=<PageHead crumbs={[{label:'Подарочные карты',to:'/gift-cards'},{label:'Корзина'}]} title={<>Корзина <Direction kind="gifts"/></>} text="Соберите разные сервисы и номиналы в один заказ — коды выдадим вместе после оплаты. Услуги для бизнеса оформляются отдельной заявкой."/>
+  if(loading&&lines.length)return <div className="container page">{head}<div className="cartLayout"><div className="stack">{lines.map(l=><Skeleton key={l.variantId} h={96} r={18}/>)}</div><Skeleton h={360} r={24}/></div></div>
+  if(!items.length)return <div className="container page">{head}<EmptyState icon={<ShoppingBag/>} title="Корзина пуста" text="Добавьте подарочные карты — разные сервисы и номиналы можно оплатить одним заказом."><Link className="btn gift lg" to="/gift-cards"><Gift size={18}/>Выбрать подарочную карту</Link></EmptyState></div>
+  return <div className="container page">
+    {head}
+    <div className="cartLayout">
+      <section className="stack">
+        {items.map(item=>{const max=Math.min(20,item.variant.stock_quantity??20);return <article className="cartItem" key={item.variant.id}>
+          <Link to={`/product/${item.product.slug}`} className="cartArt"><GiftArt title={item.product.title} size="sm"/></Link>
+          <div className="cartInfo">
+            <Link to={`/product/${item.product.slug}`}><b>{item.product.title}</b></Link>
+            <span>Номинал {item.variant.name}{item.variant.commission_percent?` · комиссия ${Number(item.variant.commission_percent).toLocaleString('ru-RU')}%`:''}</span>
+            <small>{money(item.variant.price)} за шт.</small>
+          </div>
+          <QtyStepper size="sm" value={item.quantity} max={max} onChange={q=>giftCart.update(item.variant.id,q)}/>
+          <b className="cartLineTotal">{money(Number(item.variant.price)*item.quantity)}</b>
+          <button className="iconBtn subtle" onClick={()=>remove(item)} aria-label="Удалить"><Trash2 size={18}/></button>
+        </article>})}
+        <div className="cartBelow"><Link className="link" to="/gift-cards"><ArrowLeft size={16}/>Продолжить выбор</Link><button className="textBtn" onClick={()=>giftCart.clear()}>Очистить корзину</button></div>
+      </section>
+      <aside className="summaryCard">
+        <h2>Оформление</h2>
+        <DiscountBox p={pricing} user={user} loginNext="/gift-cart"/>
+        <Totals p={pricing} count={count}/>
+        {submitError&&<div className="formError" role="alert">{submitError}</div>}
+        {user
+          ?<button className="btn gift lg block" onClick={submit} disabled={busy||pricing.loading}>{busy?'Создаём заказ…':<>Оформить заказ<ArrowRight size={18}/></>}</button>
+          :<Link className="btn gift lg block" to="/login?next=%2Fgift-cart"><LogIn size={18}/>Войти и оформить</Link>}
+        <p className="fine"><ShieldCheck size={14}/>Коды выдаются в одном заказе после подтверждения оплаты.{!user&&' Корзина сохранится после входа.'}</p>
+      </aside>
+    </div>
+  </div>
+}

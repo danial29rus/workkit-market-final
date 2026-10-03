@@ -1,6 +1,7 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react'
 import {api,adminSession} from '../api'
 import type {AdminSummary,Order,Product,PromoCode,SiteConfig} from '../types'
+import '../admin.css'
 import {BarChart3,Box,Check,ClipboardList,LogOut,Plus,RefreshCw,Save,Search,Settings2,Tag,UsersRound} from 'lucide-react'
 
 const money=(v:string|number)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB'}).format(Number(v))
@@ -26,7 +27,7 @@ export default function Admin(){
   async function load(){
     setError('')
     try{const[s,o,p,c,pr]=await Promise.all([api.admin.summary(),api.admin.orders(),api.admin.products(),api.admin.siteConfig(),api.admin.promotions()]);setSummary(s);setOrders(o);setProducts(p);setConfig(c);setPromotions(pr);setAuthorized(true)}
-    catch(e:any){setError(e.message||'Не удалось открыть админку');if(String(e.message).includes('invalid_admin_token'))setAuthorized(false)}
+    catch(e:any){setError(e.message||'Не удалось открыть админку');if(e?.code==='invalid_admin_token')setAuthorized(false)}
   }
   useEffect(()=>{if(authorized)load()},[])
   async function login(e:FormEvent){e.preventDefault();adminSession.save(token);await load()}

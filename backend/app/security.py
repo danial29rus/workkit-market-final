@@ -52,3 +52,13 @@ def current_customer(
     if not customer:
         raise HTTPException(401, 'user_not_found')
     return customer
+
+
+def optional_customer(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+):
+    """Resolve the customer when a valid token is sent, otherwise act as a guest."""
+    if not credentials:
+        return None
+    return current_customer(credentials, db)

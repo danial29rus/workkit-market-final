@@ -4,7 +4,7 @@ from ..db import get_db
 from ..dao.orders import OrderDAO
 from ..models import Customer
 from ..schemas import GiftCartCreate, GiftCartQuoteIn, OrderCreate, OrderOut, OrderQuoteIn, OrderQuoteOut
-from ..security import current_customer
+from ..security import current_customer, optional_customer
 from ..serializers import order_to_dict
 from ..services import OrderService
 
@@ -15,12 +15,12 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), customer: 
     try:
         order = OrderService.create(db, customer, payload.variant_id, payload.quantity, payload.promo_code, payload.bonus_amount)
     except ValueError as exc:
-        raise HTTPException(404, str(exc)) from exc
+        raise HTTPException(404 if str(exc) == 'variant_not_found' else 400, str(exc)) from exc
     return order_to_dict(OrderDAO.by_public_id(db, order.public_id))
 
 
 @router.post('/quote', response_model=OrderQuoteOut)
-def quote_order(payload: OrderQuoteIn, db: Session = Depends(get_db), customer: Customer = Depends(current_customer)):
+def quote_order(payload: OrderQuoteIn, db: Session = Depends(get_db), customer: Customer | None = Depends(optional_customer)):
     try:
         quote = OrderService.quote(db, customer, payload.variant_id, payload.quantity, payload.promo_code, payload.bonus_amount)
     except ValueError as exc:
@@ -29,7 +29,7 @@ def quote_order(payload: OrderQuoteIn, db: Session = Depends(get_db), customer: 
 
 
 @router.post('/gift-cart/quote', response_model=OrderQuoteOut)
-def quote_gift_cart(payload: GiftCartQuoteIn, db: Session = Depends(get_db), customer: Customer = Depends(current_customer)):
+def quote_gift_cart(payload: GiftCartQuoteIn, db: Session = Depends(get_db), customer: Customer | None = Depends(optional_customer)):
     try:
         quote = OrderService.quote_gift_cart(db, customer, [(item.variant_id, item.quantity) for item in payload.items], payload.promo_code, payload.bonus_amount)
     except ValueError as exc:
