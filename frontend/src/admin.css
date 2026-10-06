@@ -121,3 +121,22 @@
 .promoForm{grid-template-columns:1fr}
 .promoForm .primary{width:100%}
 }
+.deliveryCell{display:flex;flex-direction:column;gap:.5rem;min-width:13rem}
+.fulfil{display:flex;flex-direction:column;gap:.15rem;padding:.5rem .6rem;border-radius:.6rem;background:#f4f5f8;font-size:.8125rem}
+.fulfil small{color:#667085;overflow-wrap:anywhere}
+.fulfil.f-delivered{background:#ecfdf5}.fulfil.f-delivered b{color:#047857}
+.fulfil.f-failed,.fulfil.f-manual{background:#fff1f3}.fulfil.f-failed b,.fulfil.f-manual b{color:#be123c}
+.fulfil.f-pending b,.fulfil.f-processing b,.fulfil.f-purchasing b{color:#4f46e5}
+.fulfilActions{display:flex;gap:.75rem}
+.fulfilManual{display:flex;flex-direction:column;gap:.4rem}
+.fulfilManual textarea{min-height:4.5rem;border:1px solid #e5e8ef;border-radius:.5rem;padding:.5rem;font:inherit;font-family:monospace}
+.supplierPanel{display:flex;flex-direction:column;gap:.75rem;padding:1rem 1.15rem;margin:0 0 1rem;border:1px solid #b7e6df;background:#f3fbf9;border-radius:1rem}
+.supplierPanel>span{color:#475467;font-size:.875rem}
+.supplierHead{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+.supplierHead>div{display:flex;flex-direction:column}
+.supplierHead span{font-size:.875rem;color:#0f766e}
+.supplierList{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.supplierList>p{width:100%;margin:.25rem 0;font-size:.875rem}
+.supplierList>button:not(.textButton){display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;border:1px solid #e5e8ef;background:#fff;border-radius:.6rem;padding:.5rem .7rem;cursor:pointer}
+.supplierOffer{display:flex;flex-direction:column;gap:.15rem;border:1px solid #e5e8ef;background:#fff;border-radius:.6rem;padding:.5rem .7rem;font-size:.8125rem}
+.supplierPanel code{font-size:.75rem;background:#eef0f4;border-radius:.3rem;padding:.05rem .35rem;user-select:all}

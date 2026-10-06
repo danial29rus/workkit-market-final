@@ -77,6 +77,11 @@ export const api={
     createPromotion:(payload:Record<string,unknown>)=>adminRequest<PromoCode>('/admin/promotions',{method:'POST',body:JSON.stringify(payload)}),
     updatePromotion:(id:number,payload:Record<string,unknown>)=>adminRequest<PromoCode>(`/admin/promotions/${id}`,{method:'PATCH',body:JSON.stringify(payload)}),
     siteConfig:()=>adminRequest<SiteConfig>('/admin/site-config'),
+    supplierStatus:()=>adminRequest<{enabled:boolean;balance_usd?:string;nickname?:string;error?:string}>('/admin/supplier/status'),
+    supplierCategories:(q:string)=>adminRequest<{category_id:string;name:string}[]>(`/admin/supplier/categories?q=${encodeURIComponent(q)}`),
+    supplierCards:(id:string)=>adminRequest<{name:string;offers:{card_id:string;name:string;price_usd:string;stock:number}[]}>(`/admin/supplier/categories/${encodeURIComponent(id)}/cards`),
+    retryItem:(orderId:string,itemId:number)=>adminRequest<Order>(`/admin/orders/${orderId}/items/${itemId}/retry`,{method:'POST'}),
+    deliverCodes:(orderId:string,itemId:number,codes:string[])=>adminRequest<Order>(`/admin/orders/${orderId}/items/${itemId}/codes`,{method:'POST',body:JSON.stringify({codes})}),
     updateSiteConfig:(payload:SiteConfig)=>adminRequest<SiteConfig>('/admin/site-config',{method:'PUT',body:JSON.stringify(payload)}),
   }
 }

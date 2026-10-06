@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from . import payment_sync
+from . import fulfilment, payment_sync
 from .routers import admin, auth, catalog, orders, payments, site
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
@@ -13,9 +13,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    task = asyncio.create_task(payment_sync.run_forever()) if settings.payment_sync_interval > 0 else None
+    tasks = [asyncio.create_task(fulfilment.run_forever())]
+    if settings.payment_sync_interval > 0:
+        tasks.append(asyncio.create_task(payment_sync.run_forever()))
     yield
-    if task:
+    for task in tasks:
         task.cancel()
 
 

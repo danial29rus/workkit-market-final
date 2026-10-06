@@ -6,6 +6,7 @@ import type {Order} from '../types'
 import {useDocumentTitle} from '../hooks'
 import {Skeleton,StatusBadge,useToast} from '../components/ui'
 import PayButton from '../components/PayButton'
+import GiftCodes from '../components/GiftCodes'
 import {money} from '../lib/format'
 import {LAST_ORDER_KEY} from '../lib/payments'
 
@@ -30,12 +31,13 @@ export default function Success(){
   },[id,nav])
   // The payment webhook can arrive a few seconds after the redirect back, so re-check for a while.
   useEffect(()=>{
-    if(!o||o.status!=='awaiting_payment'||payError||!o.items.length)return
-    setPolling(true)
+    const waitingCodes=!!o&&o.status==='paid'&&o.items.some(i=>i.delivery_type==='gift_card'&&!i.codes?.length)
+    if(!o||payError||!o.items.length||(o.status!=='awaiting_payment'&&!waitingCodes))return
+    setPolling(o.status==='awaiting_payment')
     let n=0
-    const t=setInterval(()=>{n++;api.order(o.public_id).then(x=>{if(x.status!=='awaiting_payment'){setO(x);clearInterval(t);setPolling(false)}}).catch(()=>{});if(n>=20){clearInterval(t);setPolling(false)}},3000)
+    const t=setInterval(()=>{n++;api.order(o.public_id).then(x=>{if(x.status!==o.status||JSON.stringify(x.items)!==JSON.stringify(o.items)){setO(x);clearInterval(t);setPolling(false)}}).catch(()=>{});if(n>=60){clearInterval(t);setPolling(false)}},4000)
     return()=>clearInterval(t)
-  },[o?.public_id,o?.status,payError])
+  },[o,payError])
   const isGift=o?.items.every(i=>i.delivery_type==='gift_card')
   function copy(){navigator.clipboard?.writeText(o!.public_id).then(()=>toast({title:'Номер заказа скопирован'}))}
   return <div className="container page narrow">
@@ -43,7 +45,7 @@ export default function Success(){
       <div className={`successMark${o&&!paid?' pending':''}`}>{o&&!paid?<Clock3 size={38}/>:<Check size={40} strokeWidth={3}/>}</div>
       <h1>{paid?'Оплата прошла':'Заказ создан'}</h1>
       <p className="muted">{paid
-        ?(isGift?'Спасибо! Коды доступны в заказе в личном кабинете.':'Спасибо! Мы приступаем к работе — статус будет обновляться в кабинете.')
+        ?(isGift?(o?.status==='completed'?'Спасибо! Ваши коды ниже — копия отправлена на почту.':'Спасибо! Выдаём коды — обычно это занимает до 15 минут.'):'Спасибо! Мы приступаем к работе — статус будет обновляться в кабинете.')
         :payError?'Заказ сохранён, но перейти к оплате не получилось. Попробуйте ещё раз — сумма и состав не изменятся.'
         :'Заказ ожидает оплаты. Если вы уже оплатили, статус обновится автоматически в течение минуты.'}</p>
       {error&&<div className="formError">{error}</div>}
@@ -57,7 +59,7 @@ export default function Success(){
           {Number(o.bonus_spent_amount)>0&&<div className="minus"><span>Бонусы</span><b>−{money(o.bonus_spent_amount)}</b></div>}
           <div className="grand"><span>{paid?'Оплачено':'К оплате'}</span><b>{money(o.total_amount)}</b></div>
         </div>
-        {isGift&&<div className="noteBox"><KeyRound size={16}/><span>Код будет доступен только вам — в разделе «Заказы» личного кабинета.</span></div>}
+        {paid?<GiftCodes order={o}/>:isGift&&<div className="noteBox"><KeyRound size={16}/><span>Код будет доступен только вам — здесь и в разделе «Заказы» личного кабинета.</span></div>}
         {o.status==='awaiting_payment'&&<PayButton publicId={o.public_id} amount={o.total_amount} className="btn primary lg block"/>}
       </>}
       <div className="successActions"><Link className={`btn ${o?.status==='awaiting_payment'?'ghost':'primary'} lg`} to="/account?tab=orders">Перейти к заказам</Link><Link className="btn ghost lg" to={isGift?'/gift-cards':'/catalog'}>{isGift?'Ещё подарочные карты':'Другие услуги'}</Link></div>

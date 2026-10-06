@@ -1,6 +1,6 @@
-export type Variant={id:number;name:string;sku:string;price:string;old_price:string|null;delivery_type:string;face_value:string|null;commission_percent:string|null;stock_quantity:number|null;face_currency:string;exchange_rate:string|null}
+export type Variant={id:number;name:string;sku:string;price:string;old_price:string|null;delivery_type:string;face_value:string|null;commission_percent:string|null;stock_quantity:number|null;face_currency:string;exchange_rate:string|null;supplier_category_id?:string|null;supplier_card_id?:string|null}
 export type Product={id:number;slug:string;title:string;short_description:string;description:string;image_url:string;active:boolean;category_name:string;category_slug:string;variants:Variant[]}
-export type OrderItem={title:string;variant:string;unit_price:string;quantity:number;delivery_type:string;product_slug:string|null}
+export type OrderItem={id?:number;title:string;variant:string;unit_price:string;quantity:number;delivery_type:string;product_slug:string|null;fulfil_status?:string|null;codes?:string[];supplier?:string|null;supplier_order_number?:number|null;supplier_error?:string|null}
 export type Order={public_id:string;status:string;currency:string;total_amount:string;subtotal_amount:string;promo_code:string|null;promo_discount_amount:string;bonus_spent_amount:string;bonus_earned_amount:string;delivery_token:string|null;created_at:string;customer_email:string;customer_name:string|null;items:OrderItem[]}
 export type OrderQuote={subtotal_amount:string;promo_code:string|null;promo_discount_amount:string;bonus_spent_amount:string;total_amount:string;bonus_earned_amount:string}
 export type User={id:number;email:string;full_name:string|null;phone:string|null;created_at:string;bonus_balance:string}

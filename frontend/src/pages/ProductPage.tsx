@@ -107,7 +107,7 @@ function GiftCardProduct({p}:{p:Product}){
           {v.exchange_rate&&<div><span>Курс</span><b>1 {v.face_currency} = {Number(v.exchange_rate).toLocaleString('ru-RU')} ₽</b></div>}
           {v.commission_percent&&<div><span>Комиссия сервиса</span><b>{Number(v.commission_percent).toLocaleString('ru-RU')}%</b></div>}
           <div><span>Цена за 1 шт.</span><b>{money(v.price)}</b></div>
-          <div><span>В наличии</span><b className={soldOut?'danger':'ok'}>{v.stock_quantity===null?'Под заказ':soldOut?'Нет':`${v.stock_quantity} шт.`}</b></div>
+          <div><span>В наличии</span><b className={soldOut?'danger':'ok'}>{v.stock_quantity===null?'Есть':soldOut?'Нет':`${v.stock_quantity} шт.`}</b></div>
         </div>
         <div className="qtyRow"><span className="label">Количество</span><QtyStepper value={qty} onChange={setQty} max={maxQty}/></div>
         <div className="giftTotal"><span>Итого</span><b key={qty+'-'+v.id} className="tick">{money(Number(v.price)*qty)}</b></div>

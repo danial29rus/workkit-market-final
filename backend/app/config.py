@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # How often (seconds) recent unpaid orders are checked in Mulen Pay. 0 turns the background check off.
     payment_sync_interval: int = 60
 
+    # resell.codes supplier for gift-card codes. Without a key gift cards are delivered manually from the admin.
+    resellcodes_api_key: str = ''
+    resellcodes_base_url: str = 'https://resell.codes/api/v1'
+    # Where to send alerts about failed deliveries / low balance. Defaults to SMTP_FROM.
+    admin_alert_email: str = ''
+
     # SMTP for e-mail verification codes. While SMTP_HOST is empty, sign-up skips verification.
     smtp_host: str = ''
     smtp_port: int = 465
@@ -33,6 +39,10 @@ class Settings(BaseSettings):
     @property
     def payments_enabled(self) -> bool:
         return bool(self.mulenpay_api_key and self.mulenpay_secret_key and self.mulenpay_shop_id)
+
+    @property
+    def supplier_enabled(self) -> bool:
+        return bool(self.resellcodes_api_key)
 
     @property
     def email_verification_enabled(self) -> bool:

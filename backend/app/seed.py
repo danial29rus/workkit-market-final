@@ -96,7 +96,7 @@ def run():
                     delivery_type='gift_card' if cslug == 'gift-cards' else 'service',
                     face_value=face_value,
                     commission_percent=commission_percent,
-                    stock_quantity=stock_quantity,
+                    stock_quantity=None if cslug == 'gift-cards' else stock_quantity,
                     face_currency=face_currency or 'RUB',
                     exchange_rate=exchange_rate,
                 )
@@ -111,7 +111,7 @@ def run():
             product = products[product_slug]
             db.add(ProductVariant(
                 product_id=product.id, name=name, sku=sku, price=price, delivery_type='gift_card',
-                face_value=face_value, commission_percent=commission_percent, stock_quantity=stock_quantity,
+                face_value=face_value, commission_percent=commission_percent, stock_quantity=None,
                 face_currency='RUB',
             ))
             created_variants += 1

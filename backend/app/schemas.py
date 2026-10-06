@@ -16,6 +16,8 @@ class VariantOut(BaseModel):
     stock_quantity: int | None = None
     face_currency: str = 'RUB'
     exchange_rate: Decimal | None = None
+    supplier_category_id: str | None = None
+    supplier_card_id: str | None = None
 
 
 class ProductOut(BaseModel):
@@ -129,6 +131,12 @@ class OrderItemOut(BaseModel):
     quantity: int
     delivery_type: str = 'service'
     product_slug: str | None = None
+    id: int | None = None
+    fulfil_status: str | None = None
+    codes: list[str] = []
+    supplier: str | None = None
+    supplier_order_number: int | None = None
+    supplier_error: str | None = None
 
 
 class OrderOut(BaseModel):
@@ -218,6 +226,8 @@ class VariantUpdate(BaseModel):
     stock_quantity: int | None = Field(default=None, ge=0)
     face_currency: str | None = Field(default=None, min_length=3, max_length=3)
     exchange_rate: Decimal | None = Field(default=None, gt=0)
+    supplier_category_id: str | None = Field(default=None, max_length=120)
+    supplier_card_id: str | None = Field(default=None, max_length=120)
 
 
 class SiteConfigOut(BaseModel):
@@ -248,3 +258,7 @@ class SiteConfigOut(BaseModel):
 
 class SiteConfigUpdate(SiteConfigOut):
     pass
+
+
+class ManualCodesIn(BaseModel):
+    codes: list[str] = Field(min_length=1, max_length=100)

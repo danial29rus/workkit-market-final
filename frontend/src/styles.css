@@ -674,6 +674,16 @@ h1 .direction{transform:translateY(-.35em);margin-left:.5rem}
 .successMark.pending{background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 0 0 10px var(--warn-soft)}
 .successMark.pending svg{stroke-dasharray:none;stroke-dashoffset:0;animation:none}
 
+/* gift-card codes */
+.giftCodes{display:flex;flex-direction:column;gap:.75rem;text-align:left}
+.codeGroup{display:flex;flex-direction:column;gap:.45rem;padding:1rem;border-radius:var(--r);background:var(--gift-soft);border:1px solid var(--gift-line)}
+.codeGroupTitle{display:flex;align-items:center;gap:.45rem;font-size:.8125rem;font-weight:600;color:#0f766e}
+.codeRow{display:flex;align-items:center;gap:.6rem;background:#fff;border:1px solid var(--gift-line);border-radius:.75rem;padding:.4rem .4rem .4rem .9rem;animation:popIn .4s var(--ease) both}
+.codeRow code{flex:1;font-size:1.0625rem;font-weight:700;letter-spacing:.06em;color:#134e4a;overflow-wrap:anywhere}
+.codeRow .iconBtn{width:2.25rem;height:2.25rem}
+.codePending{display:flex;gap:.6rem;align-items:flex-start;padding:.85rem 1rem;border-radius:var(--r);background:var(--primary-soft);color:#3730a3;font-size:.875rem;line-height:1.5}
+.codePending svg{flex:none;margin-top:.15rem}
+
 /* ---------- Success ---------- */
 .successCard{background:#fff;border:1px solid var(--line);border-radius:var(--r-xl);padding:2.75rem 2.25rem;display:flex;flex-direction:column;gap:1.25rem;text-align:center;box-shadow:var(--shadow)}
 .successCard h1{font-size:2.25rem}

@@ -8,12 +8,14 @@ from ..dao.orders import OrderDAO
 from ..dao.products import ProductDAO
 from ..models import Category, Product, ProductVariant, PromoCode, SiteConfig
 from ..schemas import (
+    ManualCodesIn,
     OrderOut, OrderStatusUpdate, ProductCreate, ProductOut, ProductUpdate,
     PromoCodeCreate, PromoCodeOut, PromoCodeUpdate, SiteConfigOut, SiteConfigUpdate, VariantCreate, VariantUpdate,
 )
 from ..serializers import order_to_dict, product_to_dict
 from ..services import OrderService
 from .site import get_or_create_config
+from .. import fulfilment, resellcodes
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 
@@ -48,7 +50,7 @@ def summary(db: Session = Depends(get_db)):
 
 @router.get('/orders', dependencies=[Depends(require_admin)], response_model=list[OrderOut])
 def list_orders(db: Session = Depends(get_db)):
-    return [order_to_dict(o) for o in OrderDAO.list(db)]
+    return [order_to_dict(o, admin=True) for o in OrderDAO.list(db)]
 
 
 @router.patch('/orders/{public_id}', dependencies=[Depends(require_admin)], response_model=OrderOut)
@@ -60,12 +62,12 @@ def change_status(public_id: str, payload: OrderStatusUpdate, db: Session = Depe
         OrderService.set_status(db, order, payload.status)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    return order_to_dict(OrderDAO.by_public_id(db, public_id))
+    return order_to_dict(OrderDAO.by_public_id(db, public_id), admin=True)
 
 
 @router.get('/products', dependencies=[Depends(require_admin)], response_model=list[ProductOut])
 def list_products(db: Session = Depends(get_db)):
-    return [product_to_dict(p) for p in ProductDAO.list(db, active_only=False)]
+    return [product_to_dict(p, admin=True) for p in ProductDAO.list(db, active_only=False)]
 
 
 @router.post('/products', dependencies=[Depends(require_admin)])
@@ -109,7 +111,7 @@ def update_product(product_id: int, payload: ProductUpdate, db: Session = Depend
         setattr(product, key, value)
     db.commit(); db.refresh(product)
     product = db.scalar(select(Product).options(selectinload(Product.variants), selectinload(Product.category)).where(Product.id == product_id))
-    return product_to_dict(product)
+    return product_to_dict(product, admin=True)
 
 
 @router.post('/products/{product_id}/variants', dependencies=[Depends(require_admin)])
@@ -174,3 +176,71 @@ def update_site_config(payload: SiteConfigUpdate, db: Session = Depends(get_db))
         setattr(config, key, value)
     db.commit(); db.refresh(config)
     return config
+
+
+# --- Gift-card delivery -------------------------------------------------------
+
+def _order_item(db: Session, public_id: str, item_id: int):
+    order = OrderDAO.by_public_id(db, public_id)
+    item = next((i for i in order.items if i.id == item_id), None) if order else None
+    if not item:
+        raise HTTPException(404, 'item_not_found')
+    return order, item
+
+
+@router.post('/orders/{public_id}/items/{item_id}/retry', dependencies=[Depends(require_admin)], response_model=OrderOut)
+def retry_delivery(public_id: str, item_id: int, db: Session = Depends(get_db)):
+    """Put a failed / manual item back into the purchase queue. Check resell.codes first for 'manual' ones."""
+    order, item = _order_item(db, public_id, item_id)
+    if order.status not in {'paid', 'in_progress'} or item.fulfil_status not in {'failed', 'manual'}:
+        raise HTTPException(400, 'item_not_retryable')
+    if not fulfilment.has_supplier(item.variant):
+        raise HTTPException(400, 'variant_not_mapped')
+    item.fulfil_status, item.supplier_error, item.supplier_order_number, item.supplier = 'pending', None, None, None
+    db.commit()
+    return order_to_dict(OrderDAO.by_public_id(db, public_id), admin=True)
+
+
+@router.post('/orders/{public_id}/items/{item_id}/codes', dependencies=[Depends(require_admin)], response_model=OrderOut)
+def deliver_manually(public_id: str, item_id: int, payload: ManualCodesIn, db: Session = Depends(get_db)):
+    order, item = _order_item(db, public_id, item_id)
+    codes = [c.strip() for c in payload.codes if c.strip()]
+    if not codes:
+        raise HTTPException(400, 'codes_required')
+    if item.fulfil_status == 'purchasing':
+        raise HTTPException(409, 'purchase_in_progress')
+    fulfilment._mark_delivered(item, codes)
+    db.commit()
+    fulfilment._finish_order_if_ready(db, OrderDAO.by_public_id(db, public_id))
+    return order_to_dict(OrderDAO.by_public_id(db, public_id), admin=True)
+
+
+@router.get('/supplier/status', dependencies=[Depends(require_admin)])
+def supplier_status():
+    if not settings.supplier_enabled:
+        return {'enabled': False}
+    try:
+        account = resellcodes.account()
+    except (resellcodes.SupplierError, resellcodes.SupplierUnreachable) as exc:
+        return {'enabled': True, 'error': str(exc)}
+    return {'enabled': True, 'balance_usd': account.get('balance_usd'), 'nickname': account.get('nickname')}
+
+
+@router.get('/supplier/categories', dependencies=[Depends(require_admin)])
+def supplier_categories(q: str = ''):
+    if not settings.supplier_enabled:
+        raise HTTPException(400, 'supplier_not_configured')
+    try:
+        return resellcodes.categories(q)
+    except (resellcodes.SupplierError, resellcodes.SupplierUnreachable) as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+@router.get('/supplier/categories/{category_id}/cards', dependencies=[Depends(require_admin)])
+def supplier_cards(category_id: str):
+    if not settings.supplier_enabled:
+        raise HTTPException(400, 'supplier_not_configured')
+    try:
+        return resellcodes.cards(category_id)
+    except (resellcodes.SupplierError, resellcodes.SupplierUnreachable) as exc:
+        raise HTTPException(502, str(exc)) from exc

@@ -8,6 +8,7 @@ import {EmptyState,Skeleton,StatusBadge,useToast} from '../components/ui'
 import {dateShort,dateTime,money,plural} from '../lib/format'
 import {errorText} from '../lib/errors'
 import PayButton from '../components/PayButton'
+import GiftCodes from '../components/GiftCodes'
 
 type Tab='overview'|'orders'|'bonuses'|'profile'
 const TABS:{id:Tab;label:string;icon:typeof UserRound}[]=[
@@ -30,8 +31,7 @@ export default function Account(){
   const[error,setError]=useState('')
   useEffect(()=>{
     if(!session.token()){nav('/login?next=%2Faccount',{replace:true});return}
-    api.me().then(session.saveUser).catch(()=>{})
-    api.orders().then(setOrders).catch(e=>setError(e.message))
+    api.orders().then(o=>{setOrders(o);return api.me().then(session.saveUser)}).catch(e=>setError(e.message))
     api.bonusHistory().then(setBonuses).catch(()=>setBonuses([]))
   },[nav])
   useEffect(()=>{if(!user&&!session.token())nav('/login?next=%2Faccount',{replace:true})},[user,nav])
@@ -123,8 +123,9 @@ function OrderCard({o}:{o:Order}){
         {Number(o.bonus_spent_amount)>0&&<div className="minus"><span>Бонусы</span><b>−{money(o.bonus_spent_amount)}</b></div>}
         <div className="grand"><span>Итого</span><b>{money(o.total_amount)}</b></div>
       </div>
-      {o.delivery_token
-        ?<div className="tokenBox"><KeyRound size={18}/><div><small>{gift?'Код выдачи':'Код заявки'}</small><code>{o.delivery_token}</code></div><button className="iconBtn" onClick={()=>copy(o.delivery_token!,'Код')} aria-label="Скопировать код"><Copy size={16}/></button></div>
+      <GiftCodes order={o}/>
+      {o.delivery_token&&!gift
+        ?<div className="tokenBox"><KeyRound size={18}/><div><small>Номер заявки</small><code>{o.delivery_token}</code></div><button className="iconBtn" onClick={()=>copy(o.delivery_token!,'Код')} aria-label="Скопировать код"><Copy size={16}/></button></div>
         :o.status==='awaiting_payment'&&<div className="payRow"><div className="noteBox"><KeyRound size={16}/><span>{gift?'Код появится здесь после подтверждения оплаты.':'Приступим к работе после подтверждения оплаты.'}</span></div><PayButton publicId={o.public_id} amount={o.total_amount}/></div>}
       <div className="orderActions"><button className="textBtn" onClick={()=>copy(o.public_id,'Номер заказа')}><Copy size={14}/>Скопировать номер</button>{Number(o.bonus_earned_amount)>0&&<span className="muted">{['paid','in_progress','completed'].includes(o.status)?'Начислено':'Будет начислено'} {money(o.bonus_earned_amount)} бонусами</span>}</div>
     </div></div>

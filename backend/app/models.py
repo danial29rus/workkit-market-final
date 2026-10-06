@@ -48,6 +48,9 @@ class ProductVariant(Base):
     stock_quantity: Mapped[int | None] = mapped_column(nullable=True)
     face_currency: Mapped[str] = mapped_column(String(3), default='RUB')
     exchange_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    # resell.codes position this nominal is bought from (category_id + card_id). Empty = manual delivery.
+    supplier_category_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    supplier_card_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     product: Mapped[Product] = relationship(back_populates='variants')
 
 
@@ -103,6 +106,13 @@ class OrderItem(Base):
     variant_snapshot: Mapped[str] = mapped_column(String(120))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     quantity: Mapped[int] = mapped_column(default=1)
+    # Gift-card delivery: pending → purchasing → processing → delivered | failed | manual
+    fulfil_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    supplier: Mapped[str | None] = mapped_column(String(40), nullable=True)  # which supplier holds supplier_order_number
+    supplier_order_number: Mapped[int | None] = mapped_column(nullable=True)
+    supplier_error: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    codes: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of delivered codes
+    fulfil_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     order: Mapped[Order] = relationship(back_populates='items')
     variant: Mapped[ProductVariant] = relationship()
 

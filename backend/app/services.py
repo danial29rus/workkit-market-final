@@ -107,7 +107,12 @@ class OrderService:
             for item in order.items:
                 variant = db.get(ProductVariant, item.variant_id)
                 if variant and variant.stock_quantity is not None: variant.stock_quantity += item.quantity
+        if not was_paid and will_be_paid:
+            from .fulfilment import queue_paid_order  # local import: fulfilment depends on this module
+            queue_paid_order(order)
         order.status = status
-        if status in {'paid', 'in_progress', 'completed'} and not order.delivery_token: order.delivery_token = 'REQ-' + '-'.join([secrets.token_hex(2).upper() for _ in range(3)])
+        # A request number only makes sense for services; gift cards get real codes from fulfilment.
+        has_service = any(not item.variant or item.variant.delivery_type != 'gift_card' for item in order.items)
+        if status in {'paid', 'in_progress', 'completed'} and has_service and not order.delivery_token: order.delivery_token = 'REQ-' + '-'.join([secrets.token_hex(2).upper() for _ in range(3)])
         db.commit(); db.refresh(order)
         return order
