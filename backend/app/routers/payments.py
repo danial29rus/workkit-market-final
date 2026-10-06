@@ -11,6 +11,7 @@ from ..db import get_db
 from ..models import Customer, Order
 from ..security import current_customer
 from ..services import OrderService
+from ..payment_sync import confirm_order
 
 router = APIRouter(prefix='/payments', tags=['payments'])
 log = logging.getLogger('workkit.payments')
@@ -50,7 +51,7 @@ def pay_order(public_id: str, db: Session = Depends(get_db), customer: Customer 
 
 @router.post('/mulenpay/callback')
 async def mulenpay_callback(request: Request, token: str = '', db: Session = Depends(get_db)):
-    """Webhook from Mulen Pay. The payload is not signed, so the payment is re-read from the API before trusting it."""
+    """Optional webhook. Not required: orders are confirmed by polling too. The payload is unsigned, so it is re-checked via the API."""
     if settings.mulenpay_callback_token and not hmac.compare_digest(token, settings.mulenpay_callback_token):
         raise HTTPException(403, 'forbidden')
     try:
@@ -69,15 +70,8 @@ async def mulenpay_callback(request: Request, token: str = '', db: Session = Dep
     if order.status != 'awaiting_payment':
         return {'success': True}
 
-    try:
-        payment = mulenpay.get_payment(order.payment_id or payment_id)
-    except mulenpay.MulenPayError as exc:
-        raise HTTPException(502, 'verification_failed') from exc
-    same_order = str(payment.get('uuid')) == order.public_id
-    same_amount = Decimal(str(payment.get('amount'))) == Decimal(order.total_amount)
-    if int(payment.get('status', -1)) == mulenpay.STATUS_PAID and same_order and same_amount:
-        OrderService.set_status(db, order, 'paid')
-        log.info('Order %s marked as paid', order.public_id)
-    else:
-        log.warning('Callback for %s not confirmed by API: %s', order.public_id, payment)
+    if not order.payment_id and payment_id:
+        order.payment_id = payment_id
+    if not confirm_order(db, order):
+        log.warning('Callback for %s not confirmed by Mulen Pay API', order.public_id)
     return {'success': True}

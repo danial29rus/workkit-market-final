@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     mulenpay_api_key: str = ''
     mulenpay_secret_key: str = ''
     mulenpay_shop_id: int = 0
-    # Random string appended to the callback URL so strangers cannot hit the webhook blindly.
+    # Optional: only needed if a callback URL is configured in Mulen Pay. Status polling works without it.
     mulenpay_callback_token: str = ''
+    # How often (seconds) recent unpaid orders are checked in Mulen Pay. 0 turns the background check off.
+    payment_sync_interval: int = 60
 
     # SMTP for e-mail verification codes. While SMTP_HOST is empty, sign-up skips verification.
     smtp_host: str = ''

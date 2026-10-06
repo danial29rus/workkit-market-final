@@ -1,12 +1,25 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
+from . import payment_sync
 from .routers import admin, auth, catalog, orders, payments, site
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 
-app = FastAPI(title=settings.app_name)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = asyncio.create_task(payment_sync.run_forever()) if settings.payment_sync_interval > 0 else None
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],

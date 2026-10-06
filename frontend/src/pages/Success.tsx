@@ -33,7 +33,7 @@ export default function Success(){
     if(!o||o.status!=='awaiting_payment'||payError||!o.items.length)return
     setPolling(true)
     let n=0
-    const t=setInterval(()=>{n++;api.order(o.public_id).then(x=>{if(x.status!=='awaiting_payment'){setO(x);clearInterval(t);setPolling(false)}}).catch(()=>{});if(n>=10){clearInterval(t);setPolling(false)}},3000)
+    const t=setInterval(()=>{n++;api.order(o.public_id).then(x=>{if(x.status!=='awaiting_payment'){setO(x);clearInterval(t);setPolling(false)}}).catch(()=>{});if(n>=20){clearInterval(t);setPolling(false)}},3000)
     return()=>clearInterval(t)
   },[o?.public_id,o?.status,payError])
   const isGift=o?.items.every(i=>i.delivery_type==='gift_card')

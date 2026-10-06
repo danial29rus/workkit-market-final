@@ -7,6 +7,7 @@ from ..schemas import GiftCartCreate, GiftCartQuoteIn, OrderCreate, OrderOut, Or
 from ..security import current_customer, optional_customer
 from ..serializers import order_to_dict
 from ..services import OrderService
+from ..payment_sync import refresh_if_due
 
 router = APIRouter(prefix='/orders', tags=['orders'])
 
@@ -50,8 +51,15 @@ def get_order(public_id: str, db: Session = Depends(get_db), customer: Customer 
     order = OrderDAO.by_public_id(db, public_id)
     if not order or order.customer_id != customer.id:
         raise HTTPException(404, 'order_not_found')
-    return order_to_dict(order)
+    refresh_if_due(db, order)  # the customer may have just come back from the payment page
+    return order_to_dict(OrderDAO.by_public_id(db, public_id))
 
 @router.get('', response_model=list[OrderOut])
 def customer_orders(db: Session = Depends(get_db), customer: Customer = Depends(current_customer)):
-    return [order_to_dict(o) for o in OrderDAO.for_customer(db, customer.id)]
+    orders = OrderDAO.for_customer(db, customer.id)
+    pending = [o for o in orders if o.status == 'awaiting_payment' and o.payment_id][:5]
+    for order in pending:
+        refresh_if_due(db, order)
+    if pending:
+        orders = OrderDAO.for_customer(db, customer.id)
+    return [order_to_dict(o) for o in orders]
