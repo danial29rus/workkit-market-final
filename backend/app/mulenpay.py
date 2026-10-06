@@ -56,7 +56,7 @@ def create_payment(order_public_id: str, amount: Decimal, email: str, website_ur
         'amount': amount_str,
         'uuid': order_public_id,
         'shopId': settings.mulenpay_shop_id,
-        'description': f'Оплата заказа {order_public_id}',
+        'description': 'Покупка в магазине workkit-studio',
         'website_url': website_url,
         'language': 'ru',
         'client': email,

@@ -32,7 +32,8 @@ def confirm_order(db: Session, order: Order) -> bool:
         payment = mulenpay.get_payment(order.payment_id)
     except mulenpay.MulenPayError:
         return False
-    same_order = str(payment.get('uuid')) == order.public_id
+    # Mulen Pay returns our order number as external_id; its own uuid is a separate value.
+    same_order = order.public_id in (str(payment.get('external_id')), str(payment.get('uuid')))
     try:
         same_amount = Decimal(str(payment.get('amount'))) == Decimal(order.total_amount)
     except ArithmeticError:
@@ -41,6 +42,9 @@ def confirm_order(db: Session, order: Order) -> bool:
         OrderService.set_status(db, order, 'paid')
         log.info('Order %s confirmed as paid by Mulen Pay', order.public_id)
         return True
+    if int(payment.get('status', -1)) == mulenpay.STATUS_PAID:
+        log.warning('Payment %s is paid but does not match order %s (external_id=%s amount=%s)',
+                    order.payment_id, order.public_id, payment.get('external_id'), payment.get('amount'))
     return False
 
 
