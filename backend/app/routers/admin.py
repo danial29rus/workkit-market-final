@@ -1,12 +1,13 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 from ..config import settings
 from ..db import get_db
 from ..dao.orders import OrderDAO
 from ..dao.products import ProductDAO
-from ..models import Category, Product, ProductVariant, PromoCode, SiteConfig
+from ..models import Category, Customer, Order, Product, ProductVariant, PromoCode, SiteConfig
 from ..schemas import (
     ManualCodesIn,
     OrderOut, OrderStatusUpdate, ProductCreate, ProductOut, ProductUpdate,
@@ -45,6 +46,20 @@ def summary(db: Session = Depends(get_db)):
         'revenue_paid': str(sum((o.total_amount for o in orders if o.status in {'paid', 'in_progress', 'completed'}), start=0)),
         'products_total': len(products),
         'products_active': sum(1 for p in products if p.active),
+        **_user_stats(db),
+    }
+
+
+def _user_stats(db: Session) -> dict:
+    registered = Customer.password_hash.is_not(None)
+    week_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+    count = lambda *where: db.scalar(select(func.count()).select_from(Customer).where(registered, *where)) or 0
+    buyers = db.scalar(select(func.count(func.distinct(Order.customer_id))).where(Order.status.in_(('paid', 'in_progress', 'completed')))) or 0
+    return {
+        'users_total': count(),
+        'users_verified': count(Customer.email_verified.is_(True)),
+        'users_new_7d': count(Customer.created_at >= week_ago),
+        'users_buyers': buyers,
     }
 
 
