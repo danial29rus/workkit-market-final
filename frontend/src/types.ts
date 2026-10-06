@@ -9,3 +9,5 @@ export type AuthResponse={access_token:string;token_type:string;user:User}
 export type SiteConfig={brand_name:string;brand_short:string;brand_mark:string;site_mode:string;accent_color:string;tagline:string;hero_eyebrow:string;hero_title:string;hero_text:string;hero_cta:string;catalog_label:string;item_label:string;order_cta:string;promo_title:string;promo_text:string;support_email:string;support_phone:string;work_hours:string;seller_name:string;seller_inn:string;seller_ogrn:string;seller_address:string}
 export type AdminSummary={orders_total:number;orders_open:number;revenue_paid:string;products_total:number;products_active:number}
 export type BonusTransaction={id:number;amount:string;kind:'earned'|'spent'|'returned'|string;description:string;created_at:string}
+export type PendingVerification={verification_required:true;email:string;retry_after:number}
+export type AuthResult=AuthResponse|PendingVerification

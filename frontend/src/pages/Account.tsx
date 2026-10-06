@@ -7,6 +7,7 @@ import {useDocumentTitle,useUser} from '../hooks'
 import {EmptyState,Skeleton,StatusBadge,useToast} from '../components/ui'
 import {dateShort,dateTime,money,plural} from '../lib/format'
 import {errorText} from '../lib/errors'
+import PayButton from '../components/PayButton'
 
 type Tab='overview'|'orders'|'bonuses'|'profile'
 const TABS:{id:Tab;label:string;icon:typeof UserRound}[]=[
@@ -124,7 +125,7 @@ function OrderCard({o}:{o:Order}){
       </div>
       {o.delivery_token
         ?<div className="tokenBox"><KeyRound size={18}/><div><small>{gift?'Код выдачи':'Код заявки'}</small><code>{o.delivery_token}</code></div><button className="iconBtn" onClick={()=>copy(o.delivery_token!,'Код')} aria-label="Скопировать код"><Copy size={16}/></button></div>
-        :o.status==='awaiting_payment'&&<div className="noteBox"><KeyRound size={16}/><span>{gift?'Код появится здесь после подтверждения оплаты.':'Приступим к работе после подтверждения оплаты.'}</span></div>}
+        :o.status==='awaiting_payment'&&<div className="payRow"><div className="noteBox"><KeyRound size={16}/><span>{gift?'Код появится здесь после подтверждения оплаты.':'Приступим к работе после подтверждения оплаты.'}</span></div><PayButton publicId={o.public_id} amount={o.total_amount}/></div>}
       <div className="orderActions"><button className="textBtn" onClick={()=>copy(o.public_id,'Номер заказа')}><Copy size={14}/>Скопировать номер</button>{Number(o.bonus_earned_amount)>0&&<span className="muted">{['paid','in_progress','completed'].includes(o.status)?'Начислено':'Будет начислено'} {money(o.bonus_earned_amount)} бонусами</span>}</div>
     </div></div>
   </article>

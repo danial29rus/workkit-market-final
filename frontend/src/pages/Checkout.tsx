@@ -8,6 +8,7 @@ import {Direction,EmptyState,GiftArt,PageHead,QtyStepper,Skeleton} from '../comp
 import {DiscountBox,Totals,usePricing} from '../components/Pricing'
 import {GIFT_CATEGORY,money} from '../lib/format'
 import {errorText} from '../lib/errors'
+import {goToPayment} from '../lib/payments'
 
 export default function Checkout(){
   const{variantId}=useParams()
@@ -33,9 +34,11 @@ export default function Checkout(){
     e.preventDefault()
     if(!found||!user)return
     setBusy(true);setSubmitError('')
-    try{const order=await api.createOrder(found.variant.id,qty,pricing.applied,pricing.bonus);nav(`/success?order=${order.public_id}`)}
-    catch(err){setSubmitError(errorText(err,'Не удалось создать заказ'))}
-    finally{setBusy(false)}
+    try{
+      const order=await api.createOrder(found.variant.id,qty,pricing.applied,pricing.bonus)
+      const pay=await goToPayment(order.public_id)
+      if(!pay.redirected){nav(`/success?order=${order.public_id}${pay.error?'&pay_error=1':''}`);setBusy(false)}
+    }catch(err){setSubmitError(errorText(err,'Не удалось создать заказ'));setBusy(false)}
   }
   if(loading)return <div className="container page"><Skeleton h={60} w="50%"/><div className="cartLayout" style={{marginTop:24}}><Skeleton h={420} r={24}/><Skeleton h={360} r={24}/></div></div>
   if(!found)return <div className="container page"><EmptyState icon={<PackageSearch/>} title="Позиция не найдена" text="Возможно, она снята с продажи. Выберите другой вариант в каталоге."><Link className="btn primary" to="/catalog">Каталог услуг</Link><Link className="btn ghost" to="/gift-cards">Подарочные карты</Link></EmptyState></div>
@@ -57,8 +60,8 @@ export default function Checkout(){
           <DiscountBox p={pricing} user={user} loginNext={here}/>
         </section>
         <section className="panel">
-          <div className="panelHead"><h2><span className="stepNum">3</span>Оплата</h2><span className="soon">Скоро</span></div>
-          <div className="payOption"><CreditCard size={22}/><div><b>Онлайн-оплата через платёжного партнёра</b><span>Подключается отдельным этапом. Сейчас заказ создаётся со статусом «Ожидает оплаты».</span></div></div>
+          <div className="panelHead"><h2><span className="stepNum">3</span>Оплата</h2></div>
+          <div className="payOption active"><CreditCard size={22}/><div><b>СБП или банковская карта</b><span>После нажатия «{isGift?'Перейти к оплате':site.order_cta}» откроется защищённая страница Mulen Pay. Статус заказа обновится автоматически.</span></div></div>
           <p className="fine"><ShieldCheck size={14}/>Номер карты, срок действия и CVV сайт не запрашивает и не хранит.</p>
         </section>
       </div>
@@ -73,7 +76,7 @@ export default function Checkout(){
         <label className="accept"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>Принимаю <Link to="/offer" target="_blank">условия оферты</Link> и согласен с <Link to="/privacy" target="_blank">политикой конфиденциальности</Link></span></label>
         {submitError&&<div className="formError" role="alert">{submitError}</div>}
         {user
-          ?<button className={`btn ${isGift?'gift':'primary'} lg block`} disabled={busy||!accepted||pricing.loading}>{busy?'Создаём заказ…':<>{isGift?'Оформить заказ':site.order_cta}<ArrowRight size={18}/></>}</button>
+          ?<button className={`btn ${isGift?'gift':'primary'} lg block`} disabled={busy||!accepted||pricing.loading}>{busy?'Переходим к оплате…':<>{isGift?'Перейти к оплате':site.order_cta}<ArrowRight size={18}/></>}</button>
           :<Link className={`btn ${isGift?'gift':'primary'} lg block`} to={`/login?next=${encodeURIComponent(here)}`}><LogIn size={18}/>Войти и оформить</Link>}
         {user&&!accepted&&<p className="fine center">Отметьте согласие с условиями, чтобы продолжить</p>}
       </aside>

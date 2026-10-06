@@ -53,6 +53,15 @@ class CustomerOut(BaseModel):
     bonus_balance: Decimal
 
 
+class EmailIn(BaseModel):
+    email: EmailStr
+
+
+class VerifyEmailIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=12)
+
+
 class ProfileUpdate(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     phone: str | None = Field(default=None, max_length=40)

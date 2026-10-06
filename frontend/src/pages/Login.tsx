@@ -1,6 +1,8 @@
 import {FormEvent,useEffect,useState} from 'react'
+import type {AuthResponse} from '../types'
+import CodeInput from '../components/CodeInput'
 import {Link,useNavigate,useSearchParams} from 'react-router-dom'
-import {ArrowRight,Eye,EyeOff,Gift,LockKeyhole,PackageCheck,ShieldCheck,WalletCards} from 'lucide-react'
+import {ArrowLeft,ArrowRight,Eye,EyeOff,MailCheck,Gift,LockKeyhole,PackageCheck,ShieldCheck,WalletCards} from 'lucide-react'
 import {api,session} from '../api'
 import {useSite} from '../site'
 import {useDocumentTitle} from '../hooks'
@@ -17,15 +19,35 @@ export default function Login(){
   const[mode,setMode]=useState<'login'|'register'>(params.get('mode')==='register'?'register':'login')
   const[error,setError]=useState('');const[busy,setBusy]=useState(false);const[show,setShow]=useState(false)
   const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[name,setName]=useState('');const[phone,setPhone]=useState('')
-  useDocumentTitle(mode==='login'?'Вход':'Регистрация')
+  const[pending,setPending]=useState<{email:string}|null>(null)
+  const[code,setCode]=useState('');const[cooldown,setCooldown]=useState(0)
+  useDocumentTitle(pending?'Подтверждение e-mail':mode==='login'?'Вход':'Регистрация')
+  useEffect(()=>{if(cooldown<=0)return;const t=setTimeout(()=>setCooldown(c=>c-1),1000);return()=>clearTimeout(t)},[cooldown])
+  function finish(data:AuthResponse,fresh:boolean){
+    session.save(data)
+    toast({title:fresh?'Аккаунт создан':`С возвращением, ${data.user.full_name?.split(' ')[0]||'клиент'}!`,text:fresh?'Теперь можно оформлять заказы и копить бонусы.':undefined})
+    nav(next,{replace:true})
+  }
+  async function verify(value=code){
+    if(!pending||value.length<6)return
+    setError('');setBusy(true)
+    try{finish(await api.verifyEmail(pending.email,value),true)}
+    catch(err){setError(errorText(err));setCode('')}
+    finally{setBusy(false)}
+  }
+  async function resend(){
+    if(!pending||cooldown>0)return
+    setError('')
+    try{const r=await api.resendCode(pending.email);setCooldown(r.retry_after);toast({title:'Код отправлен',text:pending.email})}
+    catch(err){setError(errorText(err))}
+  }
   useEffect(()=>{if(session.token())nav(next,{replace:true})},[])
   async function submit(e:FormEvent){
     e.preventDefault();setError('');setBusy(true)
     try{
       const data=mode==='login'?await api.login(email.trim(),password):await api.register({full_name:name.trim(),email:email.trim(),password,phone:phone.trim()||undefined})
-      session.save(data)
-      toast({title:mode==='login'?`С возвращением, ${data.user.full_name?.split(' ')[0]||'клиент'}!`:'Аккаунт создан',text:mode==='register'?'Теперь можно оформлять заказы и копить бонусы.':undefined})
-      nav(next,{replace:true})
+      if('verification_required' in data){setPending({email:data.email});setCooldown(data.retry_after);setCode('')}
+      else finish(data,mode==='register')
     }catch(err){setError(errorText(err,'Не удалось выполнить запрос'))}
     finally{setBusy(false)}
   }
@@ -42,7 +64,15 @@ export default function Login(){
         <li><span><ShieldCheck size={20}/></span><div><b>Безопасность</b><small>Пароль хранится только в виде защищённого хэша</small></div></li>
       </ul>
     </section>
-    <form className="authCard" onSubmit={submit} noValidate={false}>
+    {pending?<form className="authCard" onSubmit={e=>{e.preventDefault();verify()}}>
+      <button type="button" className="textBtn backLink" onClick={()=>{setPending(null);setError('');setCode('')}}><ArrowLeft size={15}/>Назад</button>
+      <div className="verifyHead"><span className="verifyIcon"><MailCheck size={26}/></span><h2>Подтвердите e-mail</h2><p className="muted">Мы отправили 6-значный код на <b>{pending.email}</b>. Введите его ниже — письмо обычно приходит за минуту.</p></div>
+      <CodeInput value={code} disabled={busy} invalid={!!error} onChange={v=>{setCode(v);setError('');if(v.length===6)verify(v)}}/>
+      {error&&<div className="formError" role="alert">{error}</div>}
+      <button className="btn primary lg block" disabled={busy||code.length<6}>{busy?'Проверяем…':<>Подтвердить<ArrowRight size={18}/></>}</button>
+      <p className="fine center">Не пришло письмо? Проверьте «Спам» или {cooldown>0?<span>запросите новый код через {cooldown} с</span>:<button type="button" className="linkBtn" onClick={resend}>отправьте код ещё раз</button>}</p>
+    </form>
+    :<form className="authCard" onSubmit={submit} noValidate={false}>
       <div className="segmented block" role="tablist">
         <button type="button" role="tab" aria-selected={mode==='login'} className={mode==='login'?'active':''} onClick={()=>{setMode('login');setError('')}}>Вход</button>
         <button type="button" role="tab" aria-selected={mode==='register'} className={mode==='register'?'active':''} onClick={()=>{setMode('register');setError('')}}>Регистрация</button>
@@ -57,6 +87,6 @@ export default function Login(){
       {error&&<div className="formError" role="alert">{error}</div>}
       <button className="btn primary lg block" disabled={busy}>{busy?'Подождите…':<>{mode==='login'?'Войти':'Зарегистрироваться'}<ArrowRight size={18}/></>}</button>
       <p className="fine center"><LockKeyhole size={13}/>Продолжая, вы соглашаетесь с <Link to="/offer">офертой</Link> и <Link to="/privacy">политикой конфиденциальности</Link>.</p>
-    </form>
+    </form>}
   </div>
 }

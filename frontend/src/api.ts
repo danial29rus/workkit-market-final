@@ -1,4 +1,4 @@
-import type {AdminSummary,AuthResponse,BonusTransaction,Order,OrderQuote,Product,PromoCode,SiteConfig,User} from './types'
+import type {AdminSummary,AuthResponse,AuthResult,BonusTransaction,Order,OrderQuote,Product,PromoCode,SiteConfig,User} from './types'
 import {ApiError} from './lib/errors'
 const API=import.meta.env.VITE_API_URL||'/api'
 const token=()=>localStorage.getItem('workkit_token')
@@ -49,8 +49,10 @@ export const api={
   siteConfig:()=>request<SiteConfig>('/site/config'),
   products:cachedProducts,
   product:(slug:string)=>request<Product>(`/catalog/products/${slug}`),
-  register:(payload:{full_name:string;email:string;password:string;phone?:string})=>request<AuthResponse>('/auth/register',{method:'POST',body:JSON.stringify(payload)}),
-  login:(email:string,password:string)=>request<AuthResponse>('/auth/login',{method:'POST',body:JSON.stringify({email,password})}),
+  register:(payload:{full_name:string;email:string;password:string;phone?:string})=>request<AuthResult>('/auth/register',{method:'POST',body:JSON.stringify(payload)}),
+  login:(email:string,password:string)=>request<AuthResult>('/auth/login',{method:'POST',body:JSON.stringify({email,password})}),
+  verifyEmail:(email:string,code:string)=>request<AuthResponse>('/auth/verify-email',{method:'POST',body:JSON.stringify({email,code})}),
+  resendCode:(email:string)=>request<{retry_after:number}>('/auth/resend-code',{method:'POST',body:JSON.stringify({email})}),
   me:()=>request<User>('/auth/me'),
   updateMe:(payload:{full_name:string;phone:string|null})=>request<User>('/auth/me',{method:'PATCH',body:JSON.stringify(payload)}),
   changePassword:(current_password:string,new_password:string)=>request<void>('/auth/password',{method:'POST',body:JSON.stringify({current_password,new_password})}),
@@ -61,7 +63,7 @@ export const api={
   quoteGiftCart:(items:Lines,promo_code?:string,bonus_amount=0)=>request<OrderQuote>('/orders/gift-cart/quote',{method:'POST',body:JSON.stringify({items,promo_code:promo_code||null,bonus_amount})}),
   order:(id:string)=>request<Order>(`/orders/${id}`),
   orders:()=>request<Order[]>('/orders'),
-  createPayment:()=>request('/payments/create',{method:'POST'}),
+  payOrder:(publicId:string)=>request<{payment_url:string|null;paid?:boolean}>(`/payments/orders/${publicId}`,{method:'POST'}),
   admin:{
     summary:()=>adminRequest<AdminSummary>('/admin/summary'),
     orders:()=>adminRequest<Order[]>('/admin/orders'),

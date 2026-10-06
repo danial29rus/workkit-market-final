@@ -9,6 +9,7 @@ import {Direction,EmptyState,GiftArt,PageHead,QtyStepper,Skeleton,useToast} from
 import {DiscountBox,Totals,usePricing} from '../components/Pricing'
 import {money} from '../lib/format'
 import {errorText} from '../lib/errors'
+import {goToPayment} from '../lib/payments'
 
 type Resolved={product:Product;variant:Variant;quantity:number}
 
@@ -43,9 +44,9 @@ export default function GiftCart(){
     try{
       const order=await api.createGiftCart(payload,pricing.applied,pricing.bonus)
       giftCart.clear()
-      nav(`/success?order=${order.public_id}`)
-    }catch(e){setSubmitError(errorText(e,'Не удалось создать заказ'))}
-    finally{setBusy(false)}
+      const pay=await goToPayment(order.public_id)
+      if(!pay.redirected){nav(`/success?order=${order.public_id}${pay.error?'&pay_error=1':''}`);setBusy(false)}
+    }catch(e){setSubmitError(errorText(e,'Не удалось создать заказ'));setBusy(false)}
   }
 
   const head=<PageHead crumbs={[{label:'Подарочные карты',to:'/gift-cards'},{label:'Корзина'}]} title={<>Корзина <Direction kind="gifts"/></>} text="Соберите разные сервисы и номиналы в один заказ — коды выдадим вместе после оплаты. Услуги для бизнеса оформляются отдельной заявкой."/>
@@ -74,9 +75,9 @@ export default function GiftCart(){
         <Totals p={pricing} count={count}/>
         {submitError&&<div className="formError" role="alert">{submitError}</div>}
         {user
-          ?<button className="btn gift lg block" onClick={submit} disabled={busy||pricing.loading}>{busy?'Создаём заказ…':<>Оформить заказ<ArrowRight size={18}/></>}</button>
+          ?<button className="btn gift lg block" onClick={submit} disabled={busy||pricing.loading}>{busy?'Переходим к оплате…':<>Перейти к оплате<ArrowRight size={18}/></>}</button>
           :<Link className="btn gift lg block" to="/login?next=%2Fgift-cart"><LogIn size={18}/>Войти и оформить</Link>}
-        <p className="fine"><ShieldCheck size={14}/>Коды выдаются в одном заказе после подтверждения оплаты.{!user&&' Корзина сохранится после входа.'}</p>
+        <p className="fine"><ShieldCheck size={14}/>Оплата через Mulen Pay — СБП или банковская карта. Коды выдаются в одном заказе после подтверждения оплаты.{!user&&' Корзина сохранится после входа.'}</p>
       </aside>
     </div>
   </div>

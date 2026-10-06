@@ -16,6 +16,12 @@ const MESSAGES: Record<string, string> = {
   promo_minimum_not_reached: 'Сумма заказа меньше минимальной для этого промокода.',
   bonus_balance_exceeded: 'Недостаточно бонусов на балансе.',
   order_not_found: 'Заказ не найден.',
+  invalid_code: 'Неверный код. Проверьте письмо и попробуйте ещё раз.',
+  code_expired: 'Срок действия кода истёк. Запросите новый.',
+  code_attempts_exceeded: 'Слишком много попыток. Запросите новый код.',
+  order_not_payable: 'Этот заказ уже оплачен или закрыт.',
+  provider_not_configured: 'Онлайн-оплата временно недоступна. Заказ сохранён в кабинете.',
+  payment_provider_error: 'Платёжная система не ответила. Попробуйте ещё раз через минуту.',
   invalid_admin_token: 'Неверный токен администратора.',
 }
 
