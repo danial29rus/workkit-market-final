@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
 
     # Mulen Pay (https://docs.mulenpay.com). Payments are disabled while the keys are empty.
-    mulenpay_base_url: str = 'https://mulenpay.ru/api'
+    mulenpay_base_url: str = 'https://api.mulenpay.com/api'
     mulenpay_api_key: str = ''
     mulenpay_secret_key: str = ''
     mulenpay_shop_id: int = 0

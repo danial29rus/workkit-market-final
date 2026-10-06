@@ -27,6 +27,8 @@ def _request(method: str, path: str, payload: dict | None = None) -> dict:
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': f'Bearer {settings.mulenpay_api_key}',
+        # Cloudflare in front of Mulen Pay rejects the default "Python-urllib" agent (error 1010).
+        'User-Agent': 'WorkKit/1.0 (+https://workkit-studio.ru)',
     })
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
@@ -40,8 +42,8 @@ def _request(method: str, path: str, payload: dict | None = None) -> dict:
         raise MulenPayError('unreachable') from exc
 
 
-def sign(currency: str, amount: str) -> str:
-    raw = f'{currency}{amount}{settings.mulenpay_shop_id}{settings.mulenpay_secret_key}'
+def sign(currency: str, amount: str, uuid: str) -> str:
+    raw = f'{currency}{amount}{settings.mulenpay_shop_id}{uuid}{settings.mulenpay_secret_key}'
     return hashlib.sha1(raw.encode()).hexdigest()
 
 
@@ -58,9 +60,8 @@ def create_payment(order_public_id: str, amount: Decimal, email: str, website_ur
         'website_url': website_url,
         'language': 'ru',
         'client': email,
-        'subscribe': None,
-        'holdTime': None,
-        'sign': sign(currency, amount_str),
+        'items': [],
+        'sign': sign(currency, amount_str, order_public_id),
     }
     data = _request('POST', '/v2/payments', payload)
     if not data.get('success') or not data.get('paymentUrl'):
