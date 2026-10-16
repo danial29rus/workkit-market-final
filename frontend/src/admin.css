@@ -45,6 +45,13 @@
 .orderItems{display:flex;flex-direction:column;gap:8px;min-width:140px}
 .orderItems>div+div{border-top:1px solid #f1f5f9;padding-top:8px}
 .orderItems b{display:block}
+.orderAmount{display:flex;flex-direction:column;gap:6px;min-width:145px}
+.orderAmount>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.orderAmount span{display:block!important;margin:0!important;color:#64748b!important;font-size:10px!important}
+.orderAmount b{white-space:nowrap}
+.orderDiscount b{color:#15803d}
+.orderTotal{border-top:1px solid #e2e8f0;padding-top:6px;margin-top:1px}
+.orderTotal b{font-size:13px}
 .adminStatus{border:0;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:700;outline:0}
 .adminStatus.awaiting_payment{background:#fff7ed;color:#c2410c}
 .adminStatus.paid{background:#eef2ff;color:#4338ca}
