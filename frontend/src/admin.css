@@ -27,6 +27,13 @@
 .adminPanelHead>button:not(.primary){border:0;background:transparent;color:var(--primary);font-weight:700;cursor:pointer}
 .adminToolbar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:16px}
 .adminToolbar>span{font-size:12px;color:var(--muted)}
+.adminFilters{justify-content:flex-start;flex-wrap:wrap}
+.adminFilters .adminSearch{flex:1;min-width:280px}
+.adminFilters select,.adminFilters label,.filterReset{height:43px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#475569;font:inherit;font-size:12px;padding:0 10px}
+.adminFilters label{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.adminFilters label input{border:0;outline:0;color:#334155;font:inherit;font-size:12px}
+.filterReset{cursor:pointer;color:var(--primary);font-weight:700}
+.adminFilters>span{margin-left:auto;white-space:nowrap}
 .adminSearch{height:43px;min-width:380px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:0 12px}
 .adminSearch svg{width:17px;color:#94a3b8}
 .adminSearch input{border:0;outline:0;width:100%;font:inherit}
@@ -41,6 +48,9 @@
 .adminStatus.in_progress{background:#e0f2fe;color:#0369a1}
 .adminStatus.completed{background:#dcfce7;color:#15803d}
 .adminStatus.cancelled,.adminStatus.refunded{background:#f1f5f9;color:#64748b}
+.verifyBadge{display:inline-block!important;margin:0!important;border-radius:999px;padding:6px 8px;font-size:10px!important;font-weight:700}
+.verifyBadge.verified{background:#dcfce7;color:#15803d}
+.verifyBadge.unverified{background:#fff7ed;color:#c2410c}
 .adminProducts{display:flex;flex-direction:column;gap:10px}
 .adminProduct{display:grid;grid-template-columns:130px 1fr auto;gap:18px;border:1px solid var(--line);border-radius:15px;padding:12px;align-items:start}
 .adminProduct.inactive{opacity:.62}
@@ -85,6 +95,8 @@
 .adminTop h1{font-size:32px}
 .adminStats{grid-template-columns:1fr 1fr}
 .adminSearch{min-width:0;flex:1}
+.adminFilters>span{margin-left:0}
+.adminFilters select,.adminFilters label,.filterReset{flex:1}
 .adminProduct{grid-template-columns:1fr}
 .adminProduct>img{width:100%;height:180px}
 .switchRow{grid-column:1}

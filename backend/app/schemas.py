@@ -55,6 +55,13 @@ class CustomerOut(BaseModel):
     bonus_balance: Decimal
 
 
+class AdminCustomerOut(CustomerOut):
+    """Customer data that is only available to an administrator."""
+    email_verified: bool
+    orders_count: int
+    total_spent: Decimal
+
+
 class EmailIn(BaseModel):
     email: EmailStr
 

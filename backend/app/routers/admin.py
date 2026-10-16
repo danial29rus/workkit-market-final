@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func, select
@@ -9,7 +9,7 @@ from ..dao.orders import OrderDAO
 from ..dao.products import ProductDAO
 from ..models import Category, Customer, Order, Product, ProductVariant, PromoCode, SiteConfig
 from ..schemas import (
-    ManualCodesIn,
+    AdminCustomerOut, ManualCodesIn,
     OrderOut, OrderStatusUpdate, ProductCreate, ProductOut, ProductUpdate,
     PromoCodeCreate, PromoCodeOut, PromoCodeUpdate, SiteConfigOut, SiteConfigUpdate, VariantCreate, VariantUpdate,
 )
@@ -64,8 +64,72 @@ def _user_stats(db: Session) -> dict:
 
 
 @router.get('/orders', dependencies=[Depends(require_admin)], response_model=list[OrderOut])
-def list_orders(db: Session = Depends(get_db)):
-    return [order_to_dict(o, admin=True) for o in OrderDAO.list(db)]
+def list_orders(
+    q: str = '', status: str | None = None, date_from: date | None = None,
+    date_to: date | None = None, db: Session = Depends(get_db),
+):
+    """Admin order browser. Kept here so the same filters work for exports later."""
+    query = q.strip().casefold()
+    result = []
+    for order in OrderDAO.list(db):
+        haystack = ' '.join((
+            order.public_id, order.customer.email, order.customer.full_name or '',
+            *[f'{item.title_snapshot} {item.variant_snapshot}' for item in order.items],
+        )).casefold()
+        order_date = order.created_at.date()
+        if query and query not in haystack:
+            continue
+        if status and order.status != status:
+            continue
+        if date_from and order_date < date_from:
+            continue
+        if date_to and order_date > date_to:
+            continue
+        result.append(order_to_dict(order, admin=True))
+    return result
+
+
+@router.get('/users', dependencies=[Depends(require_admin)], response_model=list[AdminCustomerOut])
+def list_users(
+    q: str = '', verified: bool | None = None, buyer: bool | None = None,
+    date_from: date | None = None, date_to: date | None = None, db: Session = Depends(get_db),
+):
+    """Registered users with the information needed in the admin customer browser."""
+    customers = db.scalars(
+        select(Customer)
+        .options(selectinload(Customer.orders))
+        .where(Customer.password_hash.is_not(None))
+        .order_by(Customer.created_at.desc())
+    ).unique()
+    query = q.strip().casefold()
+    paid_statuses = {'paid', 'in_progress', 'completed'}
+    result = []
+    for customer in customers:
+        haystack = ' '.join((customer.email, customer.full_name or '', customer.phone or '')).casefold()
+        has_purchase = any(order.status in paid_statuses for order in customer.orders)
+        registered_at = customer.created_at.date()
+        if query and query not in haystack:
+            continue
+        if verified is not None and customer.email_verified != verified:
+            continue
+        if buyer is not None and has_purchase != buyer:
+            continue
+        if date_from and registered_at < date_from:
+            continue
+        if date_to and registered_at > date_to:
+            continue
+        result.append({
+            'id': customer.id,
+            'email': customer.email,
+            'full_name': customer.full_name,
+            'phone': customer.phone,
+            'created_at': customer.created_at,
+            'bonus_balance': customer.bonus_balance,
+            'email_verified': customer.email_verified,
+            'orders_count': len(customer.orders),
+            'total_spent': sum((order.total_amount for order in customer.orders if order.status in paid_statuses), start=0),
+        })
+    return result
 
 
 @router.patch('/orders/{public_id}', dependencies=[Depends(require_admin)], response_model=OrderOut)

@@ -1,4 +1,4 @@
-import type {AdminSummary,AuthResponse,AuthResult,BonusTransaction,Order,OrderQuote,Product,PromoCode,SiteConfig,User} from './types'
+import type {AdminSummary,AdminUser,AuthResponse,AuthResult,BonusTransaction,Order,OrderQuote,Product,PromoCode,SiteConfig,User} from './types'
 import {ApiError} from './lib/errors'
 const API=import.meta.env.VITE_API_URL||'/api'
 const token=()=>localStorage.getItem('workkit_token')
@@ -66,7 +66,8 @@ export const api={
   payOrder:(publicId:string)=>request<{payment_url:string|null;paid?:boolean}>(`/payments/orders/${publicId}`,{method:'POST'}),
   admin:{
     summary:()=>adminRequest<AdminSummary>('/admin/summary'),
-    orders:()=>adminRequest<Order[]>('/admin/orders'),
+    orders:(params?:URLSearchParams)=>adminRequest<Order[]>(`/admin/orders${params?.size?`?${params}`:''}`),
+    users:(params?:URLSearchParams)=>adminRequest<AdminUser[]>(`/admin/users${params?.size?`?${params}`:''}`),
     updateOrder:(id:string,status:string)=>adminRequest<Order>(`/admin/orders/${id}`,{method:'PATCH',body:JSON.stringify({status})}),
     products:()=>adminRequest<Product[]>('/admin/products'),
     createProduct:(payload:Record<string,unknown>)=>adminRequest<{id:number;slug:string}>('/admin/products',{method:'POST',body:JSON.stringify(payload)}),

@@ -1,6 +1,6 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react'
 import {api,adminSession} from '../api'
-import type {AdminSummary,Order,Product,PromoCode,SiteConfig} from '../types'
+import type {AdminSummary,AdminUser,Order,Product,PromoCode,SiteConfig} from '../types'
 import '../admin.css'
 import {BarChart3,Box,Check,ClipboardList,LogOut,Plus,RefreshCw,Save,Search,Settings2,Tag,UsersRound} from 'lucide-react'
 
@@ -8,7 +8,7 @@ const money=(v:string|number)=>new Intl.NumberFormat('ru-RU',{style:'currency',c
 const statusLabels:Record<string,string>={awaiting_payment:'Ожидает оплаты',paid:'Оплачен',in_progress:'В работе',completed:'Выполнен',cancelled:'Отменён',refunded:'Возврат'}
 const statuses=Object.keys(statusLabels)
 
-type Tab='overview'|'orders'|'products'|'promotions'|'settings'
+type Tab='overview'|'orders'|'users'|'products'|'promotions'|'settings'
 
 export default function Admin(){
   const[authorized,setAuthorized]=useState(!!adminSession.token())
@@ -16,23 +16,41 @@ export default function Admin(){
   const[tab,setTab]=useState<Tab>('overview')
   const[summary,setSummary]=useState<AdminSummary|null>(null)
   const[orders,setOrders]=useState<Order[]>([])
+  const[users,setUsers]=useState<AdminUser[]>([])
   const[products,setProducts]=useState<Product[]>([])
   const[promotions,setPromotions]=useState<PromoCode[]>([])
   const[config,setConfig]=useState<SiteConfig|null>(null)
   const[error,setError]=useState('')
-  const[query,setQuery]=useState('')
+  const[orderQuery,setOrderQuery]=useState('')
+  const[orderStatus,setOrderStatus]=useState('')
+  const[orderDateFrom,setOrderDateFrom]=useState('')
+  const[orderDateTo,setOrderDateTo]=useState('')
+  const[userQuery,setUserQuery]=useState('')
+  const[userVerified,setUserVerified]=useState('')
+  const[userBuyer,setUserBuyer]=useState('')
+  const[userDateFrom,setUserDateFrom]=useState('')
+  const[userDateTo,setUserDateTo]=useState('')
   const[busy,setBusy]=useState(false)
   const[adding,setAdding]=useState(false)
 
   async function load(){
     setError('')
-    try{const[s,o,p,c,pr]=await Promise.all([api.admin.summary(),api.admin.orders(),api.admin.products(),api.admin.siteConfig(),api.admin.promotions()]);setSummary(s);setOrders(o);setProducts(p);setConfig(c);setPromotions(pr);setAuthorized(true)}
+    try{const[s,o,u,p,c,pr]=await Promise.all([api.admin.summary(),api.admin.orders(),api.admin.users(),api.admin.products(),api.admin.siteConfig(),api.admin.promotions()]);setSummary(s);setOrders(o);setUsers(u);setProducts(p);setConfig(c);setPromotions(pr);setAuthorized(true)}
     catch(e:any){setError(e.message||'Не удалось открыть админку');if(e?.code==='invalid_admin_token')setAuthorized(false)}
   }
   useEffect(()=>{if(authorized)load()},[])
   async function login(e:FormEvent){e.preventDefault();adminSession.save(token);await load()}
   function logout(){adminSession.logout();setAuthorized(false);setToken('')}
-  const filtered=useMemo(()=>orders.filter(o=>(o.public_id+' '+o.customer_email+' '+(o.customer_name||'')+' '+o.items.map(i=>i.title).join(' ')).toLowerCase().includes(query.toLowerCase())),[orders,query])
+  const filteredOrders=useMemo(()=>orders.filter(o=>{
+    const search=(o.public_id+' '+o.customer_email+' '+(o.customer_name||'')+' '+o.items.map(i=>`${i.title} ${i.variant}`).join(' ')).toLowerCase()
+    const date=o.created_at.slice(0,10)
+    return search.includes(orderQuery.toLowerCase())&&(!orderStatus||o.status===orderStatus)&&(!orderDateFrom||date>=orderDateFrom)&&(!orderDateTo||date<=orderDateTo)
+  }),[orders,orderQuery,orderStatus,orderDateFrom,orderDateTo])
+  const filteredUsers=useMemo(()=>users.filter(user=>{
+    const search=`${user.email} ${user.full_name||''} ${user.phone||''}`.toLowerCase()
+    const date=user.created_at.slice(0,10)
+    return search.includes(userQuery.toLowerCase())&&(!userVerified||(userVerified==='verified')===user.email_verified)&&(!userBuyer||(userBuyer==='buyers')===(Number(user.total_spent)>0))&&(!userDateFrom||date>=userDateFrom)&&(!userDateTo||date<=userDateTo)
+  }),[users,userQuery,userVerified,userBuyer,userDateFrom,userDateTo])
   async function changeStatus(id:string,status:string){await api.admin.updateOrder(id,status);await load()}
   async function toggleProduct(p:Product){await api.admin.updateProduct(p.id,{active:!p.active});await load()}
   async function updateVariant(id:number,price:string,old_price:string,delivery_type:string,face_value:string,commission_percent:string,stock_quantity:string,face_currency:string,exchange_rate:string){await api.admin.updateVariant(id,{price:Number(price),old_price:old_price?Number(old_price):null,delivery_type,face_value:face_value?Number(face_value):null,commission_percent:commission_percent?Number(commission_percent):null,stock_quantity:stock_quantity?Number(stock_quantity):null,face_currency:face_currency.toUpperCase(),exchange_rate:exchange_rate?Number(exchange_rate):null});await load()}
@@ -54,12 +72,14 @@ export default function Admin(){
   if(!authorized)return <div className="container page adminLogin"><form className="authCard" onSubmit={login}><span className="eyebrow">ADMIN</span><h1>Панель управления</h1><p>Введите <code>ADMIN_TOKEN</code> из backend `.env`. Токен сохраняется только в этом браузере.</p><label>Admin token<input type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder="••••••••••••"/></label>{error&&<div className="formError">{error}</div>}<button className="primary wide">Войти</button></form></div>
 
   return <div className="adminShell">
-    <aside className="adminSide"><div className="adminBrand"><span className="mark small">W</span><div><b>Admin</b><span>WorkKit v3</span></div></div><nav><button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><BarChart3/>Обзор</button><button className={tab==='orders'?'active':''} onClick={()=>setTab('orders')}><ClipboardList/>Заказы</button><button className={tab==='products'?'active':''} onClick={()=>setTab('products')}><Box/>Предложения</button><button className={tab==='promotions'?'active':''} onClick={()=>setTab('promotions')}><Tag/>Промокоды</button><button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}><Settings2/>Вид сайта</button></nav><button className="adminLogout" onClick={logout}><LogOut/>Выйти</button></aside>
-    <section className="adminMain"><div className="adminTop"><div><span className="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</span><h1>{tab==='overview'?'Обзор':tab==='orders'?'Заказы':tab==='products'?'Предложения':tab==='promotions'?'Промокоды':'Настройки сайта'}</h1></div><button className="secondary" onClick={load}><RefreshCw size={16}/> Обновить</button></div>{error&&<div className="formError">{error}</div>}
+    <aside className="adminSide"><div className="adminBrand"><span className="mark small">W</span><div><b>Admin</b><span>WorkKit v3</span></div></div><nav><button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><BarChart3/>Обзор</button><button className={tab==='orders'?'active':''} onClick={()=>setTab('orders')}><ClipboardList/>Заказы</button><button className={tab==='users'?'active':''} onClick={()=>setTab('users')}><UsersRound/>Пользователи</button><button className={tab==='products'?'active':''} onClick={()=>setTab('products')}><Box/>Предложения</button><button className={tab==='promotions'?'active':''} onClick={()=>setTab('promotions')}><Tag/>Промокоды</button><button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}><Settings2/>Вид сайта</button></nav><button className="adminLogout" onClick={logout}><LogOut/>Выйти</button></aside>
+    <section className="adminMain"><div className="adminTop"><div><span className="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</span><h1>{tab==='overview'?'Обзор':tab==='orders'?'Заказы':tab==='users'?'Пользователи':tab==='products'?'Предложения':tab==='promotions'?'Промокоды':'Настройки сайта'}</h1></div><button className="secondary" onClick={load}><RefreshCw size={16}/> Обновить</button></div>{error&&<div className="formError">{error}</div>}
 
       {tab==='overview'&&summary&&<><div className="adminStats"><div><span>Всего заказов</span><b>{summary.orders_total}</b><ClipboardList/></div><div><span>Открытые</span><b>{summary.orders_open}</b><UsersRound/></div><div><span>Оплачено</span><b>{money(summary.revenue_paid)}</b><BarChart3/></div><div><span>Активных предложений</span><b>{summary.products_active}/{summary.products_total}</b><Box/></div></div><div className="adminStats"><div><span>Пользователей</span><b>{summary.users_total}</b><UsersRound/></div><div><span>Подтвердили e-mail</span><b>{summary.users_verified}</b><Check/></div><div><span>Новых за 7 дней</span><b>+{summary.users_new_7d}</b><Plus/></div><div><span>Покупателей</span><b>{summary.users_buyers}</b><BarChart3/></div></div><div className="adminPanel"><div className="adminPanelHead"><div><h2>Последние заказы</h2><p>Быстрый контроль текущей работы</p></div><button onClick={()=>setTab('orders')}>Все заказы →</button></div><OrderTable orders={orders.slice(0,6)} onStatus={changeStatus} onReload={load}/></div></>}
 
-      {tab==='orders'&&<div className="adminPanel"><div className="adminToolbar"><div className="adminSearch"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Номер, e-mail, клиент или услуга"/></div><span>{filtered.length} заказов</span></div><OrderTable orders={filtered} onStatus={changeStatus} onReload={load}/></div>}
+      {tab==='orders'&&<div className="adminPanel"><div className="adminToolbar adminFilters"><div className="adminSearch"><Search/><input value={orderQuery} onChange={e=>setOrderQuery(e.target.value)} placeholder="ID заказа, e-mail, клиент или услуга"/></div><select value={orderStatus} onChange={e=>setOrderStatus(e.target.value)}><option value="">Все статусы</option>{statuses.map(s=><option key={s} value={s}>{statusLabels[s]}</option>)}</select><label>С <input type="date" value={orderDateFrom} onChange={e=>setOrderDateFrom(e.target.value)}/></label><label>По <input type="date" value={orderDateTo} onChange={e=>setOrderDateTo(e.target.value)}/></label><button className="filterReset" onClick={()=>{setOrderQuery('');setOrderStatus('');setOrderDateFrom('');setOrderDateTo('')}}>Сбросить</button><span>{filteredOrders.length} заказов</span></div><OrderTable orders={filteredOrders} onStatus={changeStatus} onReload={load}/></div>}
+
+      {tab==='users'&&<div className="adminPanel"><div className="adminToolbar adminFilters"><div className="adminSearch"><Search/><input value={userQuery} onChange={e=>setUserQuery(e.target.value)} placeholder="Найти по e-mail, имени или телефону"/></div><select value={userVerified} onChange={e=>setUserVerified(e.target.value)}><option value="">E-mail: все</option><option value="verified">Подтверждён</option><option value="unverified">Не подтверждён</option></select><select value={userBuyer} onChange={e=>setUserBuyer(e.target.value)}><option value="">Покупки: все</option><option value="buyers">Есть покупки</option><option value="no_buyers">Без покупок</option></select><label>С <input type="date" value={userDateFrom} onChange={e=>setUserDateFrom(e.target.value)}/></label><label>По <input type="date" value={userDateTo} onChange={e=>setUserDateTo(e.target.value)}/></label><button className="filterReset" onClick={()=>{setUserQuery('');setUserVerified('');setUserBuyer('');setUserDateFrom('');setUserDateTo('')}}>Сбросить</button><span>{filteredUsers.length} пользователей</span></div><UserTable users={filteredUsers}/></div>}
 
       {tab==='products'&&<div className="adminPanel"><div className="adminPanelHead"><div><h2>Предложения и цены</h2><p>Карточки, видимость, цены и тип исполнения. Это базовая CMS для быстрой смены ассортимента.</p></div><button className="primary" onClick={()=>setAdding(v=>!v)}><Plus size={16}/> Добавить</button></div>{adding&&<NewProductForm onCreate={createProduct}/>}<SupplierPanel/><div className="adminProducts">{products.map(p=><ProductEditor key={p.id} product={p} onToggle={()=>toggleProduct(p)} onVariant={updateVariant} onSaved={load}/>)}</div></div>}
 
@@ -71,6 +91,8 @@ export default function Admin(){
 }
 
 function OrderTable({orders,onStatus,onReload}:{orders:Order[];onStatus:(id:string,status:string)=>void;onReload:()=>Promise<void>}){return <div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Заказ</th><th>Клиент</th><th>Предложение</th><th>Сумма</th><th>Дата</th><th>Статус</th><th>Выдача</th></tr></thead><tbody>{orders.map(o=><tr key={o.public_id}><td><b>#{o.public_id}</b></td><td><b>{o.customer_name||'Клиент'}</b><span>{o.customer_email}</span></td><td>{o.items[0]?.title}<span>{o.items[0]?.variant}</span></td><td><b>{money(o.total_amount)}</b></td><td>{new Date(o.created_at).toLocaleDateString('ru-RU')}</td><td><select className={`adminStatus ${o.status}`} value={o.status} onChange={e=>onStatus(o.public_id,e.target.value)}>{statuses.map(s=><option key={s} value={s}>{statusLabels[s]}</option>)}</select></td><td><DeliveryCell order={o} onReload={onReload}/></td></tr>)}</tbody></table>{orders.length===0&&<div className="empty">Заказов пока нет</div>}</div>}
+
+function UserTable({users}:{users:AdminUser[]}){return <div className="adminTableWrap"><table className="adminTable usersTable"><thead><tr><th>Пользователь</th><th>Контакты</th><th>Регистрация</th><th>E-mail</th><th>Заказы</th><th>Оплачено</th><th>Бонусы</th></tr></thead><tbody>{users.map(user=><tr key={user.id}><td><b>{user.full_name||'Без имени'}</b><span>ID: {user.id}</span></td><td><b>{user.email}</b>{user.phone&&<span>{user.phone}</span>}</td><td>{new Date(user.created_at).toLocaleDateString('ru-RU')}</td><td><span className={`verifyBadge ${user.email_verified?'verified':'unverified'}`}>{user.email_verified?'Подтверждён':'Не подтверждён'}</span></td><td>{user.orders_count}</td><td><b>{money(user.total_spent)}</b></td><td>{money(user.bonus_balance)}</td></tr>)}</tbody></table>{users.length===0&&<div className="empty">Пользователи по заданным фильтрам не найдены</div>}</div>}
 
 function ProductEditor({product,onToggle,onVariant,onSaved}:{product:Product;onToggle:()=>void;onVariant:(id:number,price:string,old:string,type:string,face:string,fee:string,stock:string,currency:string,rate:string)=>void;onSaved:()=>Promise<void>}){const[edit,setEdit]=useState(false);const[title,setTitle]=useState(product.title);const[short,setShort]=useState(product.short_description);const[description,setDescription]=useState(product.description);const[image,setImage]=useState(product.image_url);async function save(){await api.admin.updateProduct(product.id,{title,short_description:short,description,image_url:image});setEdit(false);await onSaved()}return <div className={`adminProduct ${!product.active?'inactive':''}`}><img src={product.image_url}/><div className="adminProductInfo"><span>{product.category_name}</span><h3>{product.title}</h3><p>{product.short_description}</p><div className="adminVariants">{product.variants.map(v=><VariantEditor key={v.id} variant={v} onSave={onVariant}/>)}</div><button className="textButton" onClick={()=>setEdit(v=>!v)}>{edit?'Закрыть':'Редактировать карточку'}</button>{edit&&<div className="productEditGrid"><label>Название<input value={title} onChange={e=>setTitle(e.target.value)}/></label><label>Короткое описание<input value={short} onChange={e=>setShort(e.target.value)}/></label><label className="wide">Изображение URL<input value={image} onChange={e=>setImage(e.target.value)}/></label><label className="wide">Описание<textarea value={description} onChange={e=>setDescription(e.target.value)}/></label><button className="primary" onClick={save}><Save size={15}/> Сохранить карточку</button></div>}</div><label className="switchRow"><input type="checkbox" checked={product.active} onChange={onToggle}/><span>{product.active?'На сайте':'Скрыто'}</span></label></div>}
 
