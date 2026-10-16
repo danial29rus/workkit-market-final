@@ -787,6 +787,44 @@ h1 .direction{transform:translateY(-.35em);margin-left:.5rem}
 .tokenBox small{font-size:.75rem;color:#0f766e}
 .tokenBox code{font-size:1.0625rem;font-weight:700;color:#134e4a;letter-spacing:.06em}
 .orderActions{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;font-size:.8125rem}
+.orderActions>div{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.supportOrderLink{margin-left:.85rem}
+.ticketComposer{display:flex;flex-direction:column;gap:1rem;background:#fff;border:1px solid var(--primary-line);border-radius:var(--r-lg);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--shadow-sm)}
+.ticketComposerHead{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.ticketComposerHead>div{display:flex;flex-direction:column;gap:.2rem}
+.ticketComposerHead span{color:var(--muted);font-size:.875rem;line-height:1.45}
+.ticketFields{display:grid;grid-template-columns:1fr 13rem 16rem;gap:.85rem}
+.ticketMessageField{grid-column:1/-1}
+.ticketComposer textarea,.ticketReply textarea{width:100%;min-height:6.5rem;resize:vertical;border:1px solid var(--line);border-radius:var(--r);padding:.8rem .9rem;outline:0;background:#fff;line-height:1.5}
+.ticketComposer textarea:focus,.ticketReply textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 14%,transparent)}
+.supportDesk{display:grid;grid-template-columns:17rem minmax(0,1fr);min-height:32rem;background:#fff;border:1px solid var(--line);border-radius:var(--r-xl);overflow:hidden}
+.ticketList{border-right:1px solid var(--line);padding:.55rem;overflow:auto;max-height:42rem}
+.ticketPreview{position:relative;width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;border:0;background:transparent;border-radius:.75rem;padding:.8rem;text-align:left;color:var(--text)}
+.ticketPreview:hover,.ticketPreview.active{background:var(--primary-soft)}
+.ticketPreview b{font-size:.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ticketPreview small,.ticketPreview time{font-size:.6875rem;color:var(--faint)}
+.ticketPreview time{position:absolute;right:.75rem;bottom:.8rem}
+.ticketStatus{display:inline-flex;align-items:center;width:max-content;border-radius:99px;padding:.18rem .5rem;background:#eff6ff;color:#1d4ed8;font-size:.6875rem;font-weight:700;line-height:1.2}
+.ticketStatus.in_progress{background:var(--primary-soft);color:var(--primary)}
+.ticketStatus.awaiting_customer{background:var(--warn-soft);color:#b45309}
+.ticketStatus.resolved{background:var(--success-soft);color:var(--success)}
+.ticketStatus.closed{background:#f2f4f7;color:#667085}
+.ticketConversation{display:flex;flex-direction:column;min-height:0}
+.ticketConversationHead{padding:1.25rem 1.4rem;border-bottom:1px solid var(--line2)}
+.ticketConversationHead>div>div{display:flex;align-items:center;gap:.6rem}
+.ticketConversationHead code{color:var(--faint);font-size:.75rem}
+.ticketConversationHead h3{font-size:1.125rem;margin:.55rem 0 .25rem}
+.ticketConversationHead p{color:var(--muted);font-size:.8125rem}
+.ticketThread{display:flex;flex:1;flex-direction:column;gap:.75rem;padding:1.25rem;overflow:auto;background:#fbfcfe;max-height:28rem}
+.ticketMessage{max-width:min(82%,38rem);padding:.75rem .9rem;border-radius:1rem 1rem 1rem .25rem;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.ticketMessage.customer{align-self:flex-end;border-color:var(--primary-line);background:var(--primary-soft);border-radius:1rem 1rem .25rem 1rem}
+.ticketMessage b{display:block;font-size:.75rem;color:var(--primary);margin-bottom:.25rem}
+.ticketMessage.customer b{color:#4338ca}
+.ticketMessage p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.875rem;line-height:1.5}
+.ticketMessage time{display:block;margin-top:.3rem;color:var(--faint);font-size:.6875rem}
+.ticketReply{display:flex;align-items:flex-end;gap:.65rem;padding:1rem 1.25rem;border-top:1px solid var(--line2)}
+.ticketReply textarea{min-height:2.75rem;max-height:10rem}
+.ticketReply .btn{flex:none}
 .bonusHero{display:flex;justify-content:space-between;align-items:center;gap:1.5rem;padding:2rem;border-radius:var(--r-xl);color:#fff;background:linear-gradient(135deg,var(--gift),var(--gift2));overflow:hidden}
 .bonusHero>div{display:flex;flex-direction:column;gap:.35rem}
 .bonusHero span{opacity:.85;font-weight:500}
@@ -1006,6 +1044,15 @@ h1 .direction{transform:translateY(-.35em);margin-left:.5rem}
   .accountNav button{padding:.6rem .7rem;gap:.4rem;font-size:.875rem}
   .accountNav button svg{width:16px;height:16px}
   .accountMain>.sectionHead.compact:first-child,.accountMain>.formError+.sectionHead.compact{margin-top:.5rem}
+  .ticketFields{grid-template-columns:1fr}
+  .ticketMessageField{grid-column:auto}
+  .supportDesk{grid-template-columns:1fr;min-height:0}
+  .ticketList{display:flex;border-right:0;border-bottom:1px solid var(--line);max-height:none;overflow:auto;padding:.5rem}
+  .ticketPreview{flex:0 0 12.5rem}
+  .ticketThread{max-height:24rem}
+  .ticketConversationHead,.ticketThread,.ticketReply{padding:1rem}
+  .ticketMessage{max-width:92%}
+  .ticketReply .btn span{display:none}
   .quiz{padding:1.25rem}
   .quizBody{padding:1.15rem;min-height:0}
   .quizGrid{grid-template-columns:1fr}

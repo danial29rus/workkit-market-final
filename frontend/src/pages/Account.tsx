@@ -1,8 +1,8 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate,useSearchParams} from 'react-router-dom'
-import {ArrowDownLeft,ArrowRight,ArrowUpRight,BriefcaseBusiness,ChevronDown,Copy,Gift,KeyRound,LayoutDashboard,LogOut,PackageCheck,PackageOpen,RotateCcw,Save,UserRound,WalletCards} from 'lucide-react'
+import {ArrowDownLeft,ArrowRight,ArrowUpRight,BriefcaseBusiness,ChevronDown,Copy,Gift,KeyRound,LayoutDashboard,LogOut,MessageCircle,PackageCheck,PackageOpen,Plus,RotateCcw,Save,Send,UserRound,WalletCards} from 'lucide-react'
 import {api,session} from '../api'
-import type {BonusTransaction,Order,User} from '../types'
+import type {BonusTransaction,Order,SupportTicket,User} from '../types'
 import {useDocumentTitle,useUser} from '../hooks'
 import {EmptyState,Skeleton,StatusBadge,useToast} from '../components/ui'
 import {dateShort,dateTime,money,plural} from '../lib/format'
@@ -10,10 +10,11 @@ import {errorText} from '../lib/errors'
 import PayButton from '../components/PayButton'
 import GiftCodes from '../components/GiftCodes'
 
-type Tab='overview'|'orders'|'bonuses'|'profile'
+type Tab='overview'|'orders'|'support'|'bonuses'|'profile'
 const TABS:{id:Tab;label:string;icon:typeof UserRound}[]=[
   {id:'overview',label:'Обзор',icon:LayoutDashboard},
   {id:'orders',label:'Заказы',icon:PackageCheck},
+  {id:'support',label:'Поддержка',icon:MessageCircle},
   {id:'bonuses',label:'Бонусы',icon:WalletCards},
   {id:'profile',label:'Профиль',icon:UserRound},
 ]
@@ -28,11 +29,13 @@ export default function Account(){
   const{user}=useUser()
   const[orders,setOrders]=useState<Order[]|null>(null)
   const[bonuses,setBonuses]=useState<BonusTransaction[]|null>(null)
+  const[tickets,setTickets]=useState<SupportTicket[]|null>(null)
   const[error,setError]=useState('')
   useEffect(()=>{
     if(!session.token()){nav('/login?next=%2Faccount',{replace:true});return}
     api.orders().then(o=>{setOrders(o);return api.me().then(session.saveUser)}).catch(e=>setError(e.message))
     api.bonusHistory().then(setBonuses).catch(()=>setBonuses([]))
+    api.tickets().then(setTickets).catch(()=>setTickets([]))
   },[nav])
   useEffect(()=>{if(!user&&!session.token())nav('/login?next=%2Faccount',{replace:true})},[user,nav])
   if(!user)return null
@@ -42,13 +45,14 @@ export default function Account(){
     <div className="accountShell">
       <aside className="accountSide">
         <div className="accountUser"><span className="avatar xl">{(user.full_name||user.email).slice(0,1).toUpperCase()}</span><div><b>{user.full_name||'Клиент'}</b><span>{user.email}</span></div></div>
-        <nav className="accountNav">{TABS.map(t=><button key={t.id} className={tab===t.id?'active':''} onClick={()=>go(t.id)}><t.icon size={18}/>{t.label}{t.id==='orders'&&orders&&orders.length>0&&<small>{orders.length}</small>}</button>)}</nav>
+        <nav className="accountNav">{TABS.map(t=>{const count=t.id==='orders'?orders?.length:t.id==='support'?tickets?.filter(x=>!['resolved','closed'].includes(x.status)).length:0;return <button key={t.id} className={tab===t.id?'active':''} onClick={()=>go(t.id)}><t.icon size={18}/>{t.label}{count? <small>{count}</small>:null}</button>})}</nav>
         <button className="accountLogout" onClick={logout}><LogOut size={18}/>Выйти</button>
       </aside>
       <section className="accountMain fadeIn" key={tab}>
         {error&&<div className="formError">{error}</div>}
         {tab==='overview'&&<Overview user={user} orders={orders} go={go}/>}
         {tab==='orders'&&<Orders orders={orders}/>}
+        {tab==='support'&&<Support tickets={tickets} orders={orders||[]} preferredOrder={params.get('order')} onCreated={ticket=>setTickets(list=>[ticket,...(list||[])])} onChanged={ticket=>setTickets(list=>list?.map(x=>x.public_id===ticket.public_id?ticket:x)||[ticket])}/>}
         {tab==='bonuses'&&<Bonuses user={user} items={bonuses}/>}
         {tab==='profile'&&<Profile user={user} onLogout={logout}/>}
       </section>
@@ -127,7 +131,7 @@ function OrderCard({o}:{o:Order}){
       {o.delivery_token&&!gift
         ?<div className="tokenBox"><KeyRound size={18}/><div><small>Номер заявки</small><code>{o.delivery_token}</code></div><button className="iconBtn" onClick={()=>copy(o.delivery_token!,'Код')} aria-label="Скопировать код"><Copy size={16}/></button></div>
         :o.status==='awaiting_payment'&&<div className="payRow"><div className="noteBox"><KeyRound size={16}/><span>{gift?'Код появится здесь после подтверждения оплаты.':'Приступим к работе после подтверждения оплаты.'}</span></div><PayButton publicId={o.public_id} amount={o.total_amount}/></div>}
-      <div className="orderActions"><button className="textBtn" onClick={()=>copy(o.public_id,'Номер заказа')}><Copy size={14}/>Скопировать номер</button>{Number(o.bonus_earned_amount)>0&&<span className="muted">{['paid','in_progress','completed'].includes(o.status)?'Начислено':'Будет начислено'} {money(o.bonus_earned_amount)} бонусами</span>}</div>
+      <div className="orderActions"><div><button className="textBtn" onClick={()=>copy(o.public_id,'Номер заказа')}><Copy size={14}/>Скопировать номер</button><Link className="textBtn supportOrderLink" to={`/account?tab=support&order=${encodeURIComponent(o.public_id)}`}><MessageCircle size={14}/>Написать в поддержку</Link></div>{Number(o.bonus_earned_amount)>0&&<span className="muted">{['paid','in_progress','completed'].includes(o.status)?'Начислено':'Будет начислено'} {money(o.bonus_earned_amount)} бонусами</span>}</div>
     </div></div>
   </article>
 }
@@ -145,6 +149,39 @@ function Bonuses({user,items}:{user:User;items:BonusTransaction[]|null}){
     :items.length?<div className="txList">{items.map(t=>{const plus=Number(t.amount)>0;return <div key={t.id}><span className={`txIcon ${plus?'plus':'minus'}`}>{plus?<ArrowDownLeft size={18}/>:<ArrowUpRight size={18}/>}</span><span className="grow"><b>{t.description}</b><small>{dateTime(t.created_at)}</small></span><b className={plus?'plus':'minus'}>{plus?'+':'−'}{money(Math.abs(Number(t.amount)))}</b></div>})}</div>
     :<EmptyState icon={<WalletCards/>} title="Операций пока нет" text="Бонусы начисляются после оплаты заказа — 2% от суммы."/>}
   </>
+}
+
+const ticketStatus:Record<SupportTicket['status'],string>={open:'Новый',in_progress:'В работе',awaiting_customer:'Ждём ваш ответ',resolved:'Решён',closed:'Закрыт'}
+const ticketCategory:Record<SupportTicket['category'],string>={delivery:'Товар или код не пришёл',payment:'Оплата',account:'Аккаунт',other:'Другой вопрос'}
+
+function Support({tickets,orders,preferredOrder,onCreated,onChanged}:{tickets:SupportTicket[]|null;orders:Order[];preferredOrder:string|null;onCreated:(ticket:SupportTicket)=>void;onChanged:(ticket:SupportTicket)=>void}){
+  const[selected,setSelected]=useState<string|null>(null)
+  const[showNew,setShowNew]=useState(false)
+  useEffect(()=>{if(preferredOrder)setShowNew(true)},[preferredOrder])
+  const current=tickets?.find(ticket=>ticket.public_id===selected)||tickets?.[0]||null
+  return <>
+    <div className="sectionHead compact"><div><h2>Поддержка</h2><p className="muted">Обращения сохраняются в истории — вы всегда увидите ответ и решение.</p></div><button className="btn primary" onClick={()=>setShowNew(true)}><Plus size={17}/>Новое обращение</button></div>
+    {showNew&&<NewTicket orders={orders} preferredOrder={preferredOrder} onCancel={()=>setShowNew(false)} onCreated={ticket=>{onCreated(ticket);setSelected(ticket.public_id);setShowNew(false)}}/>}
+    {!tickets?<div className="stack">{[0,1].map(i=><Skeleton key={i} h={92} r={16}/>)}</div>
+    :tickets.length?<div className="supportDesk"><div className="ticketList">{tickets.map(ticket=><button key={ticket.public_id} className={`ticketPreview${current?.public_id===ticket.public_id?' active':''}`} onClick={()=>setSelected(ticket.public_id)}><span className={`ticketStatus ${ticket.status}`}>{ticketStatus[ticket.status]}</span><b>{ticket.subject}</b><small>{ticket.public_id}{ticket.order_public_id?` · ${ticket.order_public_id}`:''}</small><time>{dateShort(ticket.last_message_at)}</time></button>)}</div>{current&&<TicketConversation ticket={current} onChanged={onChanged}/>}</div>
+    :<EmptyState icon={<MessageCircle/>} title="Нет обращений" text="Если заказ не пришёл или возник вопрос по оплате, создайте обращение — история переписки сохранится здесь."><button className="btn primary" onClick={()=>setShowNew(true)}><Plus size={17}/>Создать обращение</button></EmptyState>}
+  </>
+}
+
+function NewTicket({orders,preferredOrder,onCancel,onCreated}:{orders:Order[];preferredOrder:string|null;onCancel:()=>void;onCreated:(ticket:SupportTicket)=>void}){
+  const[subject,setSubject]=useState('')
+  const[category,setCategory]=useState<SupportTicket['category']>('delivery')
+  const[orderId,setOrderId]=useState(preferredOrder||'')
+  const[body,setBody]=useState('')
+  const[busy,setBusy]=useState(false);const[error,setError]=useState('')
+  async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{onCreated(await api.createTicket({subject:subject.trim(),category,body:body.trim(),order_public_id:orderId||null}))}catch(e){setError(errorText(e))}finally{setBusy(false)}}
+  return <form className="ticketComposer" onSubmit={submit}><div className="ticketComposerHead"><div><b>Новое обращение</b><span>Опишите ситуацию — поддержка увидит номер заказа и всю дальнейшую переписку.</span></div><button type="button" className="textBtn" onClick={onCancel}>Закрыть</button></div><div className="ticketFields"><label className="field"><span>Тема</span><input required minLength={3} maxLength={180} value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Например, не пришёл код подарочной карты"/></label><label className="field"><span>Тема вопроса</span><select className="select" value={category} onChange={e=>setCategory(e.target.value as SupportTicket['category'])}>{Object.entries(ticketCategory).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label className="field"><span>Заказ <em>необязательно</em></span><select className="select" value={orderId} onChange={e=>setOrderId(e.target.value)}><option value="">Не привязывать к заказу</option>{orders.map(order=><option key={order.public_id} value={order.public_id}>{order.public_id} — {order.items[0]?.title}</option>)}</select></label><label className="field ticketMessageField"><span>Сообщение</span><textarea required minLength={1} maxLength={4000} value={body} onChange={e=>setBody(e.target.value)} placeholder="Укажите, что произошло, и при необходимости добавьте детали…"/></label></div>{error&&<div className="formError">{error}</div>}<button className="btn primary" disabled={busy||!subject.trim()||!body.trim()}><Send size={17}/>{busy?'Отправляем…':'Отправить в поддержку'}</button></form>
+}
+
+function TicketConversation({ticket,onChanged}:{ticket:SupportTicket;onChanged:(ticket:SupportTicket)=>void}){
+  const[body,setBody]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('')
+  async function submit(event:FormEvent){event.preventDefault();if(!body.trim())return;setBusy(true);setError('');try{onChanged(await api.replyTicket(ticket.public_id,body.trim()));setBody('')}catch(e){setError(errorText(e))}finally{setBusy(false)}}
+  return <section className="ticketConversation"><div className="ticketConversationHead"><div><div><span className={`ticketStatus ${ticket.status}`}>{ticketStatus[ticket.status]}</span><code>{ticket.public_id}</code></div><h3>{ticket.subject}</h3><p>{ticketCategory[ticket.category]}{ticket.order_public_id?` · Заказ ${ticket.order_public_id}`:''}</p></div></div><div className="ticketThread">{ticket.messages.map(message=><article key={message.id} className={`ticketMessage ${message.sender}`}><b>{message.sender==='admin'?'Поддержка':'Вы'}</b><p>{message.body}</p><time>{dateTime(message.created_at)}</time></article>)}</div>{ticket.status==='closed'?<div className="noteBox"><MessageCircle size={17}/><span>Обращение закрыто. Если вопрос снова актуален, создайте новое обращение.</span></div>:<form className="ticketReply" onSubmit={submit}><textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Напишите сообщение…" maxLength={4000}/><button className="btn primary" disabled={busy||!body.trim()} aria-label="Отправить сообщение"><Send size={17}/><span>{busy?'Отправляем…':'Отправить'}</span></button></form>}{error&&<div className="formError">{error}</div>}</section>
 }
 
 function Profile({user,onLogout}:{user:User;onLogout:()=>void}){

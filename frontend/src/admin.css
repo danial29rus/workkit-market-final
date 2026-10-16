@@ -34,6 +34,24 @@
 .adminFilters label input{border:0;outline:0;color:#334155;font:inherit;font-size:12px}
 .filterReset{cursor:pointer;color:var(--primary);font-weight:700}
 .adminFilters>span{margin-left:auto;white-space:nowrap}
+.adminSide nav small{margin-left:auto;min-width:1.25rem;height:1.25rem;display:grid;place-items:center;border-radius:99px;background:#f59e0b;color:#422006;font-size:10px;font-weight:800}
+.adminSupportDesk{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:590px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.adminTicketList{display:flex;flex-direction:column;gap:4px;padding:7px;border-right:1px solid var(--line);overflow:auto;max-height:680px}
+.adminTicketList>button{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;border:0;border-radius:10px;background:transparent;padding:10px;text-align:left;color:#334155;cursor:pointer}
+.adminTicketList>button:hover,.adminTicketList>button.active{background:#eef2ff}
+.adminTicketList b{max-width:100%;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adminTicketList small,.adminTicketList time{font-size:10px;color:#64748b}
+.adminTicketList time{position:absolute;right:10px;bottom:10px}
+.adminTicketList>p{margin:12px;color:#64748b;font-size:12px}
+.adminTicketStatus{display:inline-flex;width:max-content;border-radius:99px;padding:4px 7px;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800;line-height:1}
+.adminTicketStatus.awaiting_customer{background:#fef3c7;color:#92400e}.adminTicketStatus.resolved{background:#dcfce7;color:#15803d}.adminTicketStatus.closed{background:#f1f5f9;color:#64748b}.adminTicketStatus.in_progress{background:#e0f2fe;color:#0369a1}
+.adminTicketThread{display:flex;flex-direction:column;min-width:0;background:#f8fafc}
+.adminTicketThread header{position:relative;padding:18px 20px;border-bottom:1px solid var(--line);background:#fff}
+.adminTicketThread header>div{display:flex;align-items:center;gap:8px}.adminTicketThread code{font-size:11px;color:#64748b}.adminTicketThread h2{font-size:18px;margin:9px 0 4px}.adminTicketThread p{margin:0;color:#64748b;font-size:11px}.adminTicketThread header select{position:absolute;right:18px;top:18px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px;font:inherit;font-size:11px}
+.adminMessages{display:flex;flex:1;flex-direction:column;gap:9px;padding:18px;overflow:auto;max-height:430px}
+.adminMessages article{max-width:min(76%,620px);padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px 12px 12px 3px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.adminMessages article.admin{align-self:flex-end;border-color:#c7d2fe;background:#eef2ff;border-radius:12px 12px 3px 12px}.adminMessages b{display:block;color:#4338ca;font-size:10px;margin-bottom:4px}.adminMessages p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.45}.adminMessages time{display:block;margin-top:5px;color:#94a3b8;font-size:9px}
+.adminTicketThread form{display:flex;align-items:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--line);background:#fff}.adminTicketThread textarea{flex:1;min-height:40px;max-height:120px;resize:vertical;border:1px solid #cbd5e1;border-radius:9px;padding:9px;font:inherit;font-size:12px;outline:0}.adminTicketThread textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent)}.adminTicketThread form .primary{height:40px;padding:0 12px;display:flex;align-items:center;gap:5px}
 .adminSearch{height:43px;min-width:380px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:0 12px}
 .adminSearch svg{width:17px;color:#94a3b8}
 .adminSearch input{border:0;outline:0;width:100%;font:inherit}
@@ -113,6 +131,7 @@
 .settingsGrid{grid-template-columns:1fr}
 .settingsGrid label.wide{grid-column:auto}
 .presetRow{flex-wrap:wrap}
+.adminSupportDesk{grid-template-columns:1fr;min-height:0}.adminTicketList{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);max-height:none;overflow:auto}.adminTicketList>button{flex:0 0 220px}.adminMessages{max-height:360px}.adminTicketThread header select{position:static;margin-top:10px}.adminTicketThread form .primary{font-size:0;width:40px;padding:0;justify-content:center}.adminTicketThread form .primary svg{width:16px}
 }
 .variantEditor select{height:30px;border:1px solid #dbe3ee;border-radius:6px;background:#fff;font-size:10px;padding:0 5px}
 .textButton{border:0;background:transparent;color:var(--primary);font-weight:700;font-size:11px;padding:10px 0 0;cursor:pointer}

@@ -72,6 +72,7 @@ class Customer(Base):
     verify_attempts: Mapped[int] = mapped_column(default=0)
     orders: Mapped[list['Order']] = relationship(back_populates='customer')
     bonus_transactions: Mapped[list['BonusTransaction']] = relationship(back_populates='customer')
+    support_tickets: Mapped[list['SupportTicket']] = relationship(back_populates='customer')
 
 
 class Order(Base):
@@ -95,6 +96,7 @@ class Order(Base):
     customer: Mapped[Customer] = relationship(back_populates='orders')
     items: Mapped[list['OrderItem']] = relationship(back_populates='order', cascade='all, delete-orphan')
     bonus_transactions: Mapped[list['BonusTransaction']] = relationship(back_populates='order')
+    support_tickets: Mapped[list['SupportTicket']] = relationship(back_populates='order')
 
 
 class OrderItem(Base):
@@ -143,6 +145,35 @@ class BonusTransaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     customer: Mapped[Customer] = relationship(back_populates='bonus_transactions')
     order: Mapped[Order | None] = relationship(back_populates='bonus_transactions')
+
+
+class SupportTicket(Base):
+    __tablename__ = 'support_tickets'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey('customers.id'), index=True)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey('orders.id', ondelete='SET NULL'), nullable=True, index=True)
+    subject: Mapped[str] = mapped_column(String(180))
+    category: Mapped[str] = mapped_column(String(40), default='other')
+    status: Mapped[str] = mapped_column(String(40), default='open', index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    last_message_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    customer: Mapped[Customer] = relationship(back_populates='support_tickets')
+    order: Mapped[Order | None] = relationship(back_populates='support_tickets')
+    messages: Mapped[list['SupportMessage']] = relationship(
+        back_populates='ticket', cascade='all, delete-orphan', order_by='SupportMessage.created_at',
+    )
+
+
+class SupportMessage(Base):
+    __tablename__ = 'support_messages'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey('support_tickets.id', ondelete='CASCADE'), index=True)
+    sender: Mapped[str] = mapped_column(String(20))  # customer | admin
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    ticket: Mapped[SupportTicket] = relationship(back_populates='messages')
 
 
 class SiteConfig(Base):

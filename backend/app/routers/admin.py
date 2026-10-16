@@ -7,16 +7,17 @@ from ..config import settings
 from ..db import get_db
 from ..dao.orders import OrderDAO
 from ..dao.products import ProductDAO
-from ..models import Category, Customer, Order, Product, ProductVariant, PromoCode, SiteConfig
+from ..models import Category, Customer, Order, Product, ProductVariant, PromoCode, SiteConfig, SupportMessage, SupportTicket
 from ..schemas import (
-    AdminCustomerOut, ManualCodesIn,
+    AdminCustomerOut, AdminSupportTicketOut, ManualCodesIn,
     OrderOut, OrderStatusUpdate, ProductCreate, ProductOut, ProductUpdate,
-    PromoCodeCreate, PromoCodeOut, PromoCodeUpdate, SiteConfigOut, SiteConfigUpdate, VariantCreate, VariantUpdate,
+    PromoCodeCreate, PromoCodeOut, PromoCodeUpdate, SiteConfigOut, SiteConfigUpdate, SupportMessageIn, SupportTicketStatusUpdate, VariantCreate, VariantUpdate,
 )
 from ..serializers import order_to_dict, product_to_dict
 from ..services import OrderService
 from .site import get_or_create_config
 from .. import fulfilment, resellcodes
+from .support import get_ticket, now as support_now, ticket_query, ticket_to_dict
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 
@@ -255,6 +256,50 @@ def update_site_config(payload: SiteConfigUpdate, db: Session = Depends(get_db))
         setattr(config, key, value)
     db.commit(); db.refresh(config)
     return config
+
+
+# --- Customer support ---------------------------------------------------------
+@router.get('/support/tickets', dependencies=[Depends(require_admin)], response_model=list[AdminSupportTicketOut])
+def list_support_tickets(status: str | None = None, q: str = '', db: Session = Depends(get_db)):
+    tickets = db.scalars(ticket_query().order_by(SupportTicket.last_message_at.desc())).unique()
+    query = q.strip().casefold()
+    result = []
+    for ticket in tickets:
+        haystack = ' '.join((
+            ticket.public_id, ticket.subject, ticket.customer.email, ticket.customer.full_name or '',
+            ticket.order.public_id if ticket.order else '',
+        )).casefold()
+        if status and ticket.status != status:
+            continue
+        if query and query not in haystack:
+            continue
+        result.append(ticket_to_dict(ticket, admin=True))
+    return result
+
+
+@router.patch('/support/tickets/{public_id}', dependencies=[Depends(require_admin)], response_model=AdminSupportTicketOut)
+def update_support_ticket(public_id: str, payload: SupportTicketStatusUpdate, db: Session = Depends(get_db)):
+    ticket = get_ticket(db, public_id)
+    if not ticket:
+        raise HTTPException(404, 'ticket_not_found')
+    ticket.status = payload.status
+    ticket.updated_at = support_now()
+    db.commit()
+    return ticket_to_dict(get_ticket(db, public_id), admin=True)
+
+
+@router.post('/support/tickets/{public_id}/messages', dependencies=[Depends(require_admin)], response_model=AdminSupportTicketOut)
+def add_support_message(public_id: str, payload: SupportMessageIn, db: Session = Depends(get_db)):
+    ticket = get_ticket(db, public_id)
+    if not ticket:
+        raise HTTPException(404, 'ticket_not_found')
+    created = support_now()
+    ticket.status = 'awaiting_customer'
+    ticket.last_message_at = created
+    ticket.updated_at = created
+    db.add(SupportMessage(ticket_id=ticket.id, sender='admin', body=payload.body.strip(), created_at=created))
+    db.commit()
+    return ticket_to_dict(get_ticket(db, public_id), admin=True)
 
 
 # --- Gift-card delivery -------------------------------------------------------

@@ -1,4 +1,4 @@
-import type {AdminSummary,AdminUser,AuthResponse,AuthResult,BonusTransaction,Order,OrderQuote,Product,PromoCode,SiteConfig,User} from './types'
+import type {AdminSummary,AdminSupportTicket,AdminUser,AuthResponse,AuthResult,BonusTransaction,Order,OrderQuote,Product,PromoCode,SiteConfig,SupportTicket,User} from './types'
 import {ApiError} from './lib/errors'
 const API=import.meta.env.VITE_API_URL||'/api'
 const token=()=>localStorage.getItem('workkit_token')
@@ -63,12 +63,18 @@ export const api={
   quoteGiftCart:(items:Lines,promo_code?:string,bonus_amount=0)=>request<OrderQuote>('/orders/gift-cart/quote',{method:'POST',body:JSON.stringify({items,promo_code:promo_code||null,bonus_amount})}),
   order:(id:string)=>request<Order>(`/orders/${id}`),
   orders:()=>request<Order[]>('/orders'),
+  tickets:()=>request<SupportTicket[]>('/support/tickets'),
+  createTicket:(payload:{subject:string;category:string;body:string;order_public_id?:string|null})=>request<SupportTicket>('/support/tickets',{method:'POST',body:JSON.stringify(payload)}),
+  replyTicket:(id:string,body:string)=>request<SupportTicket>(`/support/tickets/${id}/messages`,{method:'POST',body:JSON.stringify({body})}),
   payOrder:(publicId:string)=>request<{payment_url:string|null;paid?:boolean}>(`/payments/orders/${publicId}`,{method:'POST'}),
   admin:{
     summary:()=>adminRequest<AdminSummary>('/admin/summary'),
     orders:(params?:URLSearchParams)=>adminRequest<Order[]>(`/admin/orders${params?.size?`?${params}`:''}`),
     users:(params?:URLSearchParams)=>adminRequest<AdminUser[]>(`/admin/users${params?.size?`?${params}`:''}`),
     updateOrder:(id:string,status:string)=>adminRequest<Order>(`/admin/orders/${id}`,{method:'PATCH',body:JSON.stringify({status})}),
+    tickets:()=>adminRequest<AdminSupportTicket[]>('/admin/support/tickets'),
+    updateTicket:(id:string,status:string)=>adminRequest<AdminSupportTicket>(`/admin/support/tickets/${id}`,{method:'PATCH',body:JSON.stringify({status})}),
+    replyTicket:(id:string,body:string)=>adminRequest<AdminSupportTicket>(`/admin/support/tickets/${id}/messages`,{method:'POST',body:JSON.stringify({body})}),
     products:()=>adminRequest<Product[]>('/admin/products'),
     createProduct:(payload:Record<string,unknown>)=>adminRequest<{id:number;slug:string}>('/admin/products',{method:'POST',body:JSON.stringify(payload)}),
     updateProduct:(id:number,payload:Record<string,unknown>)=>adminRequest<Product>(`/admin/products/${id}`,{method:'PATCH',body:JSON.stringify(payload)}),

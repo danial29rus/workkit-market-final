@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from . import fulfilment, payment_sync
-from .routers import admin, auth, catalog, orders, payments, site
+from .routers import admin, auth, catalog, orders, payments, site, support
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 
@@ -39,4 +39,5 @@ app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(catalog.router, prefix=settings.api_prefix)
 app.include_router(orders.router, prefix=settings.api_prefix)
 app.include_router(payments.router, prefix=settings.api_prefix)
+app.include_router(support.router, prefix=settings.api_prefix)
 app.include_router(admin.router, prefix=settings.api_prefix)

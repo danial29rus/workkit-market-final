@@ -167,6 +167,45 @@ class OrderStatusUpdate(BaseModel):
     status: str
 
 
+class SupportMessageIn(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class SupportTicketCreate(BaseModel):
+    subject: str = Field(min_length=3, max_length=180)
+    category: str = Field(default='other', pattern='^(delivery|payment|account|other)$')
+    body: str = Field(min_length=1, max_length=4000)
+    order_public_id: str | None = Field(default=None, max_length=40)
+
+
+class SupportTicketStatusUpdate(BaseModel):
+    status: str = Field(pattern='^(open|in_progress|awaiting_customer|resolved|closed)$')
+
+
+class SupportMessageOut(BaseModel):
+    id: int
+    sender: str
+    body: str
+    created_at: datetime
+
+
+class SupportTicketOut(BaseModel):
+    public_id: str
+    subject: str
+    category: str
+    status: str
+    order_public_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    last_message_at: datetime
+    messages: list[SupportMessageOut]
+
+
+class AdminSupportTicketOut(SupportTicketOut):
+    customer_name: str | None = None
+    customer_email: EmailStr
+
+
 class PromoCodeCreate(BaseModel):
     code: str = Field(min_length=3, max_length=40)
     discount_type: str = Field(pattern='^(percent|fixed)$')
