@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react'
 import {Link,NavLink,useLocation} from 'react-router-dom'
-import {BriefcaseBusiness,Gift,Search,ShoppingBag,UserRound,X} from 'lucide-react'
+import {BriefcaseBusiness,Gift,Search,ShoppingBag,TriangleAlert,UserRound,X} from 'lucide-react'
 import {useSite} from '../site'
 import {useArea,useGiftCart,useUser} from '../hooks'
 import SearchBox from './SearchBox'
@@ -23,6 +23,12 @@ export default function Header(){
   const serviceArea=location.pathname.startsWith('/catalog')||itemPage&&area==='services'
   const firstName=user?.full_name?.split(' ')[0]||'Кабинет'
   return <>
+    <div className="maintenanceBanner" role="status">
+      <div className="container maintenanceBannerInner">
+        <TriangleAlert size={17} aria-hidden="true"/>
+        <p><strong>Технические работы.</strong> Оплата может быть временно недоступна. Приносим извинения за неудобства.</p>
+      </div>
+    </div>
     <header className={`siteHeader${scrolled?' scrolled':''}`}>
       <div className="container headerRow">
         <Link className="brand" to="/" aria-label={site.brand_name}><span className="mark">{site.brand_mark}</span><span className="brandName">{site.brand_name}</span></Link>
