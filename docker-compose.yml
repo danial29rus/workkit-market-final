@@ -37,6 +37,8 @@ services:
       RESELLCODES_API_KEY: ${RESELLCODES_API_KEY:-}
       RESELLCODES_BASE_URL: ${RESELLCODES_BASE_URL:-https://resell.codes/api/v1}
       ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-}
+      # Temporary switch: set to true after SMTP delivery has been repaired.
+      EMAIL_VERIFICATION_ENABLED: ${EMAIL_VERIFICATION_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER:-}

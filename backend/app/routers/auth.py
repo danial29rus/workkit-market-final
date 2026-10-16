@@ -74,7 +74,7 @@ def register(payload: RegisterIn, tasks: BackgroundTasks, db: Session = Depends(
             password_hash=hash_password(payload.password),
         )
         db.add(customer)
-    customer.email_verified = not settings.email_verification_enabled
+    customer.email_verified = not settings.email_verification_active
     db.commit()
     db.refresh(customer)
     if customer.email_verified:
@@ -87,6 +87,15 @@ def login(payload: LoginIn, tasks: BackgroundTasks, db: Session = Depends(get_db
     customer = CustomerDAO.by_email(db, payload.email)
     if not customer or not verify_password(payload.password, customer.password_hash):
         raise HTTPException(401, 'invalid_email_or_password')
+    if not customer.email_verified and not settings.email_verification_active:
+        # Delivery is temporarily disabled: let existing unconfirmed users in too.
+        # Marking them verified keeps their account usable after verification is restored.
+        customer.email_verified = True
+        customer.verify_code_hash = None
+        customer.verify_expires_at = None
+        customer.verify_attempts = 0
+        db.commit()
+        db.refresh(customer)
     if not customer.email_verified:
         return _pending(customer, _send_code(db, customer, tasks))
     return _session(customer)

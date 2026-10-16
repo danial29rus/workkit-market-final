@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     # Where to send alerts about failed deliveries / low balance. Defaults to SMTP_FROM.
     admin_alert_email: str = ''
 
-    # SMTP for e-mail verification codes. While SMTP_HOST is empty, sign-up skips verification.
+    # Keep this off while e-mail delivery is unavailable. SMTP must also be configured to enable it.
+    email_verification_enabled: bool = False
+
+    # SMTP for e-mail verification codes.
     smtp_host: str = ''
     smtp_port: int = 465
     smtp_user: str = ''
@@ -45,7 +48,7 @@ class Settings(BaseSettings):
         return bool(self.resellcodes_api_key)
 
     @property
-    def email_verification_enabled(self) -> bool:
-        return bool(self.smtp_host)
+    def email_verification_active(self) -> bool:
+        return self.email_verification_enabled and bool(self.smtp_host)
 
 settings = Settings()
