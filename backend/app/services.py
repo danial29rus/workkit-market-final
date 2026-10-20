@@ -2,6 +2,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import secrets
+import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 from .models import BonusTransaction, Customer, Order, OrderItem, ProductVariant, PromoCode
@@ -63,7 +64,9 @@ class OrderService:
 
     @staticmethod
     def _create_from_quote(db: Session, customer: Customer, quote: dict) -> Order:
-        order = Order(public_id='WK-' + secrets.token_hex(4).upper(), customer_id=customer.id, status='awaiting_payment', total_amount=quote['total_amount'], subtotal_amount=quote['subtotal_amount'], promo_code=quote['promo_code'], promo_discount_amount=quote['promo_discount_amount'], bonus_spent_amount=quote['bonus_spent_amount'], bonus_earned_amount=quote['bonus_earned_amount'], currency='RUB')
+        # One UUID is used as the public order ID and as Mulen Pay's payment UUID.
+        # Keeping them identical makes payment reconciliation deterministic.
+        order = Order(public_id=str(uuid.uuid4()), customer_id=customer.id, status='awaiting_payment', total_amount=quote['total_amount'], subtotal_amount=quote['subtotal_amount'], promo_code=quote['promo_code'], promo_discount_amount=quote['promo_discount_amount'], bonus_spent_amount=quote['bonus_spent_amount'], bonus_earned_amount=quote['bonus_earned_amount'], currency='RUB')
         db.add(order); db.flush()
         if quote['promo_code']: db.scalar(select(PromoCode).where(PromoCode.code == quote['promo_code'])).usage_count += 1
         for variant_id, quantity in quote['quantities'].items():
